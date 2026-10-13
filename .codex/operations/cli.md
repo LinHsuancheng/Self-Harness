@@ -12,6 +12,9 @@
 # 月度五来源材料
 .venv/bin/python interface.py context --level month --date 2026-10-13
 
+# 生成月报 HTML（先配置 .env 中的 DEEPSEEK_API_KEY）
+.venv/bin/python -m core.run --config config.json --level month --date 2026-10-13
+
 # 单来源周期材料
 .venv/bin/python interface.py summarize sleep --level week --date 2026-10-13
 
@@ -25,6 +28,6 @@
 .venv/bin/python interface.py latest-before weight --time 2026-10-13T00:00:00+08:00
 ```
 
-所有命令可在 interface.py 后添加 --config。另外提供 todo-changes 与 pc-active-time，使用 --start/--end。
+core 报告支持 day、week、month、quarter、half-year、year，输出到配置的 `reports_dir`（默认 `./reports`）。interface 命令可使用 `--config` 指定配置；另外提供 todo-changes 与 pc-active-time，使用 --start/--end。
 
 相关资源：[周期含义](../implementation/periods.md)、[operator](../implementation/operators.md)。

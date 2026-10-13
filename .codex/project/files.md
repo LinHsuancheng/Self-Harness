@@ -5,9 +5,14 @@
 | server.py | 上传接收、分类、gzip 归档与接收信息 |
 | collect_activitywatch.py | PC 采集上传入口 |
 | interface.py | 获取、入库、查询与周期统计 CLI |
+| core/run.py | 获取周期材料、调用 DeepSeek 并生成 HTML 报告 |
+| core/prompts/report.md | 报告分析 prompt |
+| core/templates/report.html | 本地渲染的独立 HTML 报告模板 |
 | schedule.py | systemd 单元生成与安装 |
 | collector.service | 接收服务单元 |
 | config.example.json | 配置示例 |
+| .env.example | DeepSeek 环境变量示例（真实 `.env` 不提交） |
+| reports/ | 生成的 HTML 报告输出目录 |
 | requirements.txt | Python 依赖 |
 | interfaces/fetcher.py | 文件、Graph 和 ActivityWatch 获取 |
 | interfaces/parser.py | 五来源纯解析 |

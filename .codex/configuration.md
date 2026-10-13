@@ -6,6 +6,7 @@
 | --- | --- |
 | data_dir | 原始数据根目录 |
 | database_dir | 每来源 SQLite 根目录 |
+| reports_dir | HTML 报告输出目录，默认 `./reports` |
 | timezone | 报告时区 |
 | listen | 接收服务 host/port |
 | folders | 上传 type 到来源目录的映射 |
@@ -20,5 +21,7 @@
 | schedule | 入库、Todo、PC 的运行秒数 |
 
 服务可用 SELF_HARNESS_CONFIG 指定配置路径，CLI 使用 --config。凭据存放于配置指定的位置，Git 提交遵循项目 .gitignore。
+
+DeepSeek 设置放在项目根目录的 `.env`：`DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL`（默认 `https://api.deepseek.com`）和 `DEEPSEEK_MODEL`（默认 `deepseek-flash`）。`.env` 已加入 `.gitignore`，不要提交真实密钥。
 
 相关资源：[安装](operations/setup.md)、[活动参数](implementation/activities.md)。
