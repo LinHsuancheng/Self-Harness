@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{TITLE}}</title>
+  <style>
+    :root { color-scheme: light; font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; color: #25312e; background: #f5f6f2; }
+    * { box-sizing: border-box; }
+    body { margin: 0; line-height: 1.75; }
+    main { width: min(100% - 2rem, 900px); margin: 3rem auto 5rem; }
+    header { padding: 2.5rem; background: #e9efe8; border-radius: 1rem; }
+    .eyebrow { margin: 0 0 .5rem; font-size: .85rem; letter-spacing: .12em; color: #496b5d; }
+    h1 { margin: 0 0 .5rem; font: 600 clamp(2rem, 5vw, 3.5rem)/1.2 Georgia, "Noto Serif SC", serif; }
+    .period { margin: 0; color: #50645b; }
+    section { margin-top: 1rem; padding: 1.5rem 2rem; background: white; border: 1px solid #e1e6df; border-radius: .8rem; }
+    h2 { margin: 0 0 .75rem; font-size: 1.15rem; color: #315b4a; }
+    p { margin: 0; }
+    ul { margin: 0; padding-left: 1.4rem; }
+    li + li { margin-top: .65rem; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: .6rem .5rem; border-bottom: 1px solid #e5e9e3; }
+    th { font-weight: 600; }
+    .note { margin-top: .75rem; color: #63746b; font-size: .9rem; }
+    @media (max-width: 600px) { main { width: min(100% - 1rem, 900px); margin: .5rem auto 2rem; } header, section { padding: 1.25rem; } }
+    @media print { :root { background: white; } body { color: black; } main { width: 100%; margin: 0; } header, section { break-inside: avoid; border-color: #bbb; background: white; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header><p class="eyebrow">SELF HARNESS · 周期回顾</p><h1>{{TITLE}}</h1><p class="period">{{PERIOD_LABEL}}</p></header>
+    <section aria-labelledby="summary"><h2 id="summary">这段时间</h2><p>{{SUMMARY}}</p></section>
+    <section aria-labelledby="observations"><h2 id="observations">值得关注的观察</h2><ul>{{OBSERVATIONS}}</ul></section>
+    <section aria-labelledby="changes"><h2 id="changes">相比上期</h2><ul>{{CHANGES}}</ul></section>
+    <section aria-labelledby="recommendations"><h2 id="recommendations">下一步的小实验</h2><ul>{{RECOMMENDATIONS}}</ul></section>
+    <section aria-labelledby="coverage"><h2 id="coverage">数据覆盖</h2><div class="table-wrap"><table><thead><tr><th scope="col">来源</th><th scope="col">有效天数</th><th scope="col">记录数</th></tr></thead><tbody>{{COVERAGE}}</tbody></table></div><p class="note">有效天数和记录数直接来自本期材料，缺失记录不等于数值为零。</p></section>
+  </main>
+</body>
+</html>
