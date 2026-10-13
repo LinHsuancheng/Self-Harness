@@ -122,11 +122,11 @@ systemctl --user status self-harness-pc.service
 | 体重 | min、max、mean、last、change、measurement_count、unit |
 | 睡眠 | sleep_hours、awake_hours、start、end、stages |
 | iPhone | total_minutes、按时长排序的 apps（minutes/share）、daily |
-| PC | total_minutes、按时长排序的 apps（minutes/share）、hourly、websites（domain/minutes/share/pages） |
+| PC | total_minutes、统一 activities（应用/网站、minutes/share/topics）、有活动的 hourly |
 | Todo | completed_count、completed_tasks、pending_count、appeared_count、disappeared_count、changed_count |
 
 iPhone 取报告时区每天末次快照计算分布。睡眠按查询区间统计各阶段时长。PC 汇总复用现有活跃应用计算，按小时输出使用分布。Todo 按实际完成时间统计，并读取期末之后第一份快照捕获跨日采集的完成任务；期末状态使用区间内最新快照。
 
 运行 `.venv/bin/python checks/summaries.py` 可验证五类汇总和精简 context 的计算结果。
 
-PC 的 websites 从 ActivityWatch 扩展事件读取 URL 和标题，在前台浏览器活跃时段内按网站域名和页面标题汇总。默认浏览器为 msedge.exe，可通过 sources.pc_screen_time.browser_apps 配置浏览器进程名列表；网页标题通过 pages 返回，原始 URL 保留在细节 query 中。
+PC 的 activities 将浏览器展开为网站，与其他应用使用统一的时长和全天占比分布，浏览器容器不重复计入。扩展 URL 和标题按网站归并，主要页面标题通过 topics 返回。sources.pc_screen_time.summary 配置 min_activity_minutes（默认1分钟）、page_titles_per_site（默认3）和 website_names（域名归并名称）；短活动合并为其他零散活动，浏览器未匹配到网页的时长一并保留。默认浏览器为 msedge.exe，可通过 browser_apps 配置。完整网站及页面分布仍可通过 operator.web_activity 获取，原始 URL 保留在细节 query 中。

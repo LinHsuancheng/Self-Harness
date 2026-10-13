@@ -18,7 +18,8 @@ def database(config, source):
 
 def ingest(config, source, retry_failed=False):
     settings = config['sources'][source]
-    version = parser.VERSION+'-'+hashlib.sha256(json.dumps(settings,sort_keys=True).encode()).hexdigest()[:12]
+    parse_settings={k:v for k,v in settings.items() if k not in ('summary','browser_apps')}
+    version = parser.VERSION+'-'+hashlib.sha256(json.dumps(parse_settings,sort_keys=True).encode()).hexdigest()[:12]
     counts = {'success':0,'duplicate':0,'failed':0,'skipped':0}
     with closing(database(config, source)) as db:
         for path, collected_at in fetcher.files(config, source):
@@ -79,6 +80,9 @@ def summarize(config, source, start, end):
     elif source=='pc_screen_time':
         result=summary.pc(config,start,end,pc_active_time)
         result['websites']=web_activity(config,start,end)
+        result['activities']=summary.activities(result,config['sources'][source])
+        del result['apps'],result['websites']
+        result['hourly']=[hour for hour in result['hourly'] if hour['minutes']]
     elif source=='todo':
         with closing(database(config,source)) as db:
             following=db.rows(start=end)

@@ -28,7 +28,26 @@
     "iphone_screen_time": {
       "aggregation_window": null
     },
-    "pc_screen_time": {},
+    "pc_screen_time": {
+      "summary": {
+        "min_activity_minutes": 1,
+        "page_titles_per_site": 3,
+        "website_names": {
+          "onedrive.live.com": "OneDrive",
+          "www.icloud.com.cn": "iCloud",
+          "chatgpt.com": "ChatGPT",
+          "mail.google.com": "Gmail",
+          "cn.bing.com": "Bing",
+          "www.bing.com": "Bing",
+          "search.bilibili.com": "哔哩哔哩",
+          "www.bilibili.com": "哔哩哔哩",
+          "www.zhihu.com": "知乎",
+          "zhuanlan.zhihu.com": "知乎",
+          "link.zhihu.com": "知乎",
+          "web.tabliss.io": "新标签页"
+        }
+      }
+    },
     "todo": {
       "cache_file": "./auth/token_cache.json",
       "client_id": "169cbcb3-a5ca-4336-aa0f-2b192c319149",

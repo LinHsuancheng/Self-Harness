@@ -102,3 +102,34 @@ def todo(rows, baseline, start, end, following=None):
     return {'completed_count':len(completed),'completed_tasks':list(completed.values()),
             'pending_count':pending,
             'appeared_count':len(appeared),'disappeared_count':len(disappeared),'changed_count':len(changed)}
+
+
+def activities(report, settings):
+    """Use websites as browser activities and applications as other activities."""
+    options=settings.get('summary',{})
+    minimum=options.get('min_activity_minutes',1)
+    titles=options.get('page_titles_per_site',3)
+    aliases=options.get('website_names',{})
+    browsers={app.lower() for app in settings.get('browser_apps',['msedge.exe'])}
+    items=[];sites={}
+    browser_minutes=sum(app['minutes'] for app in report['apps'] if app['app'].lower() in browsers)
+    for site in report['websites']:
+        name=aliases.get(site['domain'],site['domain'])
+        group=sites.setdefault(name,{'minutes':0,'pages':defaultdict(float)})
+        group['minutes']+=site['minutes']
+        for page in site['pages']:group['pages'][page['title']]+=page['minutes']
+    for name,site in sites.items():
+        items.append({'kind':'website','name':name,'minutes':site['minutes'],
+                      'topics':[title for title,_ in sorted(site['pages'].items(),key=lambda p:(-p[1],p[0]))[:titles]]})
+    items.extend({'kind':'application','name':app['app'],'minutes':app['minutes']}
+                 for app in report['apps'] if app['app'].lower() not in browsers)
+    remainder=browser_minutes-sum(site['minutes'] for site in sites.values())
+    if remainder>0:
+        items.append({'kind':'browser','name':'其他浏览器活动','minutes':remainder})
+    other=sum(item['minutes'] for item in items if item['minutes']<minimum)
+    items=[item for item in items if item['minutes']>=minimum]
+    if other:items.append({'kind':'other','name':'其他零散活动','minutes':other})
+    for item in items:
+        item['share']=round(item['minutes']/report['total_minutes'],4) if report['total_minutes'] else 0
+        item['minutes']=round(item['minutes'],3)
+    return sorted(items,key=lambda item:(-item['minutes'],item['name']))

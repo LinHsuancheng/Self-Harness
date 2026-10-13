@@ -41,8 +41,8 @@ with tempfile.TemporaryDirectory() as directory:
     assert phone['total_minutes']==120 and phone['apps'][0]['share']==0.75
     pc=summarize(config,'pc_screen_time',start,end)['summary']
     assert pc['total_minutes']==60 and sum(h['minutes'] for h in pc['hourly'])==60
-    assert len(pc['websites'])==2 and sum(site['minutes'] for site in pc['websites'])==60
-    assert pc['websites'][0]['pages'][0]['title']=='Reading'
+    assert len(pc['activities'])==2 and sum(site['minutes'] for site in pc['activities'])==60
+    assert pc['activities'][0]['topics']==['Reading']
     todo=summarize(config,'todo',start,end)['summary']
     assert todo['completed_count']==1 and todo['pending_count']==0
     result=context(config,start,end)
@@ -56,3 +56,14 @@ with tempfile.TemporaryDirectory() as directory:
     assert later_summary['completed_count']==2
     assert later_summary['pending_count']==0
 print('PASS: weight range, sleep hours, app distributions, hourly PC usage, completed tasks, compact context')
+
+from interfaces.summary import activities
+report={'total_minutes':12,'apps':[{'app':'msedge.exe','minutes':10},{'app':'Editor','minutes':1.5},{'app':'Helper','minutes':0.5}],
+        'websites':[{'domain':'a.test','minutes':6,'pages':[{'title':'Read','minutes':6}]},
+                    {'domain':'b.test','minutes':3,'pages':[{'title':'Work','minutes':3}]}]}
+items=activities(report,{'browser_apps':['msedge.exe'],'summary':{'min_activity_minutes':1,'page_titles_per_site':3}})
+assert not any(item['name']=='msedge.exe' for item in items)
+assert sum(item['minutes'] for item in items)==12
+assert next(item for item in items if item['name']=='a.test')['topics']==['Read']
+assert any(item['kind']=='other' for item in items)
+print('PASS: browser replaced by sites, minor activities grouped, total duration retained')
