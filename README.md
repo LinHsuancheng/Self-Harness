@@ -130,3 +130,25 @@ iPhone 取报告时区每天末次快照计算分布。睡眠按查询区间统�
 运行 `.venv/bin/python checks/summaries.py` 可验证五类汇总和精简 context 的计算结果。
 
 PC 的 activities 将浏览器展开为网站，与其他应用使用统一的时长和全天占比分布，浏览器容器不重复计入。扩展 URL 和标题按网站归并，主要页面标题通过 topics 返回。sources.pc_screen_time.summary 配置 min_activity_minutes（默认1分钟）、page_titles_per_site（默认3）和 website_names（域名归并名称）；短活动合并为其他零散活动，浏览器未匹配到网页的时长一并保留。默认浏览器为 msedge.exe，可通过 browser_apps 配置。完整网站及页面分布仍可通过 operator.web_activity 获取，原始 URL 保留在细节 query 中。
+
+## 多周期统计（固定版）
+
+```sh
+# 月报：自动计算10月完整日期范围
+.venv/bin/python interface.py context --level month --date 2026-10-13
+# 单来源周报
+.venv/bin/python interface.py summarize sleep --level week --date 2026-10-13
+# 自定义范围与展示周期
+.venv/bin/python interface.py context --level year \
+  --start 2026-01-01T00:00:00+08:00 --end 2027-01-01T00:00:00+08:00
+```
+
+level 支持 day/week/month/quarter/halfyear/year。day/week 趋势按日、month 按自然周、quarter/halfyear/year 按月；所有模式都提供五来源的 summary、trend、comparison、highlights 和 data_quality。
+
+有效数据量：record_count 为区间有效记录数，calendar_days 为报告日数，effective_days 为有统计依据的日数，average_denominator 为实际均值分母。区间来源还有 observed_hours/time_coverage；缺失分桶返回 null，真实观测到的零值保留为零。日均指标使用有效日，体重均值使用实际测量数。睡眠有效日按完整睡眠的结束日期计算，observed_days 另外记录分期实际覆盖的日期数。
+
+睡眠 sleep_hours 统计与报告区间相交的时长，attributed_sleep_hours 统计在区间内结束的完整睡眠；daily_average_hours 使用后者除以有效日。任意时间入睡和一天多次睡眠都支持。session_gap_minutes 控制连续睡眠过程的连接间隔，默认30分钟。
+
+上期比较返回同类周期边界及其有效数据量。统计和比较均使用完整结构化记录；展示层收敛长周期的活动与标题数量。各来源独立计算，没有每日缓存层。
+
+验证：`checks/interfaces.py`、`checks/summaries.py`、`checks/periods.py`。报告模型和邮件仍是后续阶段。

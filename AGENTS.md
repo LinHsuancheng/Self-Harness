@@ -133,6 +133,18 @@ PC 使用 `collect_activitywatch.py` 从配置的 ActivityWatch 地址取得 AFK
 
 迁移时搬走原始数据、统一材料和历史报告，更新配置与定时任务即可；不要求沿用某个 IP 或固定目录。
 
+## 多周期 operator 固定版
+
+支持 day、week、month、quarter、halfyear、year。start/end 控制统计范围，level 控制趋势粒度；也可用 level/date 按报告时区生成自然周期。日报和周报按日列趋势，月报按自然周列趋势，季报/半年报/年报按月列趋势；所有模式都输出五个来源。
+
+统一返回 source、level、period、data_quality、summary、trend、comparison、highlights。data_quality 包含有效记录数、日历天数、有效天数、均值分母与观测范围；区间来源另给实际覆盖小时和时间覆盖比例。没有有效数据的统计为 null，上期缺失时差值为 null。按来源的实际有效测量或有效日计算均值。
+
+睡眠按实际连续分期组成过程，支持白天、多次与跨边界睡眠，过程连接间隔通过 sources.sleep.summary.session_gap_minutes 配置，默认30分钟。sleep_hours 是区间内时长；attributed_sleep_hours 是在区间内结束的完整睡眠时长；daily_average_hours 按这些完整睡眠的结束日期计有效日，避免一觉跨午夜被当作两份样本。起止时段分布、分期占比与每次睡眠长度均由实际数据计算。
+
+PC 与 iPhone 继续给出应用/网站分布；长周期输出主要活动及周/月趋势，日报保留小时活动。Todo 统计完成、列表分布、期初期末待办及变化。比较使用上一个同类日历周期，并保留其有效数据量。
+
+采用 ponytail 固定可工作的实现：周期边界、来源计算、数据访问保持分离；不建立每日统计缓存或复用层，不为尚未出现的数据规模增加优化框架。
+
 ## 后续流程
 
 接口层已建立，继续按实际数据效果调整；下一阶段确认并恢复 Google OAuth 邮件授权、确定报告方式，再打通分析与发送闭环。不因接口层完成而声称邮件或报告已经完成。

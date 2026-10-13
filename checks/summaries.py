@@ -47,7 +47,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert todo['completed_count']==1 and todo['pending_count']==0
     result=context(config,start,end)
     assert all('summary' in item and 'materials' not in item for item in result.values())
-    assert len(json.dumps(result))<10000
+    assert all(len(item['trend'])==1 for item in result.values())
     later={'complete':True,'observed_at':'2026-10-14T00:00:00+08:00','lists':[{'list':{'id':'l'},'tasks':[
         {'task':{'id':'late','title':'Late completion','status':'completed','completedDateTime':{'dateTime':'2026-10-13T15:30:00','timeZone':'UTC'}},'checklist':[]}]}]}
     put('todo','later.gz',json.dumps(later))

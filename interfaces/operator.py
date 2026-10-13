@@ -69,32 +69,13 @@ def status(config, source):
         return result
 
 
-def summarize(config, source, start, end):
-    rows=query(config,source,start,end)
-    if source=='weight':
-        result=summary.weight(rows,latest_before(config,source,start))
-    elif source=='sleep':
-        result=summary.sleep(rows,start,end)
-    elif source=='iphone_screen_time':
-        result=summary.iphone(rows,config.get('timezone','UTC'))
-    elif source=='pc_screen_time':
-        result=summary.pc(config,start,end,pc_active_time)
-        result['websites']=web_activity(config,start,end)
-        result['activities']=summary.activities(result,config['sources'][source])
-        del result['apps'],result['websites']
-        result['hourly']=[hour for hour in result['hourly'] if hour['minutes']]
-    elif source=='todo':
-        with closing(database(config,source)) as db:
-            following=db.rows(start=end)
-            following=material(source,following[0]) if following else None
-        result=summary.todo(rows,latest_before(config,source,start),start,end,following)
-    else:
-        raise ValueError('Unsupported source: '+source)
-    return {'source':source,'period':{'start':start,'end':end},'summary':result}
+def summarize(config, source, start, end, level='day'):
+    from .report import report
+    return report(config,source,start,end,level)
 
 
-def context(config, start, end):
-    return {source:summarize(config,source,start,end) for source in config['sources']}
+def context(config, start, end, level='day'):
+    return {source:summarize(config,source,start,end,level) for source in config['sources']}
 
 
 def todo_changes(config, start, end):
@@ -120,8 +101,8 @@ def todo_changes(config, start, end):
     return changes
 
 
-def pc_active_time(config, start, end):
-    rows = query(config,'pc_screen_time',start,end)
+def pc_active_time(config, start, end, rows=None):
+    rows = query(config,'pc_screen_time',start,end) if rows is None else rows
     lower,upper = datetime.fromisoformat(parser.utc(start)),datetime.fromisoformat(parser.utc(end))
     active = {}
     for row in rows:
@@ -149,11 +130,11 @@ def pc_active_time(config, start, end):
             'afk_data_present':any(r['data']['bucket_type']=='afkstatus' for r in rows)}
 
 
-def web_activity(config, start, end):
+def web_activity(config, start, end, rows=None, precision=3):
     """Website and page time within the active browser's foreground intervals."""
     from collections import defaultdict
     from urllib.parse import urlsplit
-    rows=query(config,'pc_screen_time',start,end)
+    rows=query(config,'pc_screen_time',start,end) if rows is None else rows
     lower,upper=datetime.fromisoformat(parser.utc(start)),datetime.fromisoformat(parser.utc(end))
     browser_apps={app.lower() for app in config['sources']['pc_screen_time'].get('browser_apps',['msedge.exe'])}
     windows=defaultdict(list);active=defaultdict(list);web=[]
@@ -184,7 +165,7 @@ def web_activity(config, start, end):
         sites[domain]+=minutes
         pages[domain][details['title']]+=minutes
     total=sum(sites.values())
-    return [{'domain':domain,'minutes':round(minutes,3),'share':round(minutes/total,4),
-             'pages':[{'title':title,'minutes':round(duration,3)}
+    return [{'domain':domain,'minutes':round(minutes,precision),'share':round(minutes/total,4),
+             'pages':[{'title':title,'minutes':round(duration,precision)}
                       for title,duration in sorted(pages[domain].items(),key=lambda item:(-item[1],item[0]))]}
             for domain,minutes in sorted(sites.items(),key=lambda item:(-item[1],item[0]))]
