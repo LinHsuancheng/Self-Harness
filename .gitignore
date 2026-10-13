@@ -1,17 +1,24 @@
+# Python environment and cache
 .venv/
 __pycache__/
+
+# Local configuration and credentials
 config.json
-observation/
-*token*.json
-*.log
-raw/
-auth/
 .env
 .env.*
 !.env.example
+auth/
+*token*.json
+
+# Runtime data
+raw/
+observation/
+database/
 *.db
 *.db-*
-database/
 *.sqlite3
 *.sqlite3-*
 /reports/
+
+# Logs
+*.log
