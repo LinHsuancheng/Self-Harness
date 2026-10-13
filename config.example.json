@@ -63,6 +63,7 @@
   "schedule": {
     "ingest_seconds": 60,
     "todo_seconds": 3600,
-    "pc_seconds": 3600
+    "pc_seconds": 3600,
+    "report_time": "06:00"
   }
 }

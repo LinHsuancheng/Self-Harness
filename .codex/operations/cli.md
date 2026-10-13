@@ -18,6 +18,9 @@
 # 明确开启时，将生成的 HTML 报告通过 Gmail 发送给 config.json 的 email.to
 .venv/bin/python -m core.run --config config.json --level month --date 2026-10-13 --send-email
 
+# 按配置时区生成昨天的日报并邮件投递
+.venv/bin/python -m core.run --config config.json --level day --date yesterday --send-email
+
 # 单来源周期材料
 .venv/bin/python interface.py summarize sleep --level week --date 2026-10-13
 

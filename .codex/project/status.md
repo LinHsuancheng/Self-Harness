@@ -14,6 +14,6 @@
 
 本地 Git 工作区已实现单次 core 报告生成与 Gmail 投递：调用 interface 获取周期材料，通过 DeepSeek 生成结构化内容并渲染为 HTML。2026-10-14 使用服务器五来源材料完成 2026-10-13 日报生成和真实邮件投递。
 
-当前 GitHub `main` 已部署到服务器 `/root/test-server`；配置、授权、原始数据、数据库和 Python 环境仍在服务器，采集服务 active。周期报告调度尚未配置。
+当前 GitHub `main` 已部署到服务器 `/root/test-server`；配置、授权、原始数据、数据库和 Python 环境仍在服务器，采集服务 active。服务器日报每日 06:00（Asia/Singapore）生成昨天报告并发送邮件。
 
 相关资源：[部署](../operations/deployment.md)、[历史](../history/index.md)。

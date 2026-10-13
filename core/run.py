@@ -1,7 +1,7 @@
 """Generate one HTML report from the interface's period context."""
 
 import argparse
-from datetime import date as CalendarDate
+from datetime import date as CalendarDate, datetime, timedelta
 from html import escape
 import json
 import os
@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -143,10 +144,13 @@ def run(config_path, level, date) -> Path:
     """Generate and atomically save one period's report."""
     if level not in LEVELS:
         raise ValueError(f"不支持的报告周期：{level}")
-    if CalendarDate.fromisoformat(date).isoformat() != date:
-        raise ValueError("日期必须使用 YYYY-MM-DD 格式")
     config_path = Path(config_path).resolve()
     config = json.loads(config_path.read_text(encoding="utf-8"))
+    if date == "yesterday":
+        date = (datetime.now(ZoneInfo(config.get("timezone", "UTC"))).date()
+                - timedelta(days=1)).isoformat()
+    if CalendarDate.fromisoformat(date).isoformat() != date:
+        raise ValueError("日期必须使用 YYYY-MM-DD 格式")
     interface_level = "halfyear" if level == "half-year" else level
     command = [sys.executable, str(ROOT / "interface.py"), "--config", str(config_path),
                "context", "--level", interface_level, "--date", date]
@@ -199,7 +203,7 @@ def main():
     parser = argparse.ArgumentParser(description="生成单个周期的中文 HTML 报告")
     parser.add_argument("--config", default="config.json")
     parser.add_argument("--level", choices=LEVELS, required=True)
-    parser.add_argument("--date", required=True, help="YYYY-MM-DD")
+    parser.add_argument("--date", required=True, help="YYYY-MM-DD or yesterday in the configured timezone")
     parser.add_argument("--send-email", action="store_true", help="生成报告后通过 Gmail 投递")
     args = parser.parse_args()
     try:

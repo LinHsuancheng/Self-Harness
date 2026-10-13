@@ -10,6 +10,6 @@
 
 DeepSeek API key、base URL 和 model 从项目根目录的 `.env` 读取，示例见 `.env.example`。首次使用需复制示例并设置 `DEEPSEEK_API_KEY`。
 
-邮件默认关闭；显式添加 `--send-email` 后，使用 `config.json` 的 `email.token_file` 与 `email.to` 通过 Gmail API 投递 HTML 报告。OAuth token 留在本地/部署环境，不进 Git。周期调度待本地邮件流程验证后再配置。
+手动运行时邮件默认关闭；显式添加 `--send-email` 后，使用 `config.json` 的 `email.token_file` 与 `email.to` 通过 Gmail API 投递 HTML 报告。服务器日报 timer 每天按配置时区生成昨天的报告并自动投递。OAuth token 留在本地/部署环境，不进 Git。
 
 相关资源：[operator](../implementation/operators.md)、[邮件资源](../integrations/email.md)。
