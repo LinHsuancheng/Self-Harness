@@ -17,5 +17,28 @@
     "url": "http://localhost:5600",
     "hours": 24,
     "upload_url": "http://45.32.47.93:8000/upload"
+  },
+  "database_dir": "./database",
+  "max_uncompressed_bytes": 52428800,
+  "sources": {
+    "sleep": {},
+    "weight": {
+      "unit": null
+    },
+    "iphone_screen_time": {
+      "aggregation_window": null
+    },
+    "pc_screen_time": {},
+    "todo": {
+      "cache_file": "./auth/token_cache.json",
+      "client_id": "169cbcb3-a5ca-4336-aa0f-2b192c319149",
+      "authority": "https://login.microsoftonline.com/consumers",
+      "graph_url": "https://graph.microsoft.com/v1.0"
+    }
+  },
+  "schedule": {
+    "ingest_seconds": 60,
+    "todo_seconds": 3600,
+    "pc_seconds": 3600
   }
 }

@@ -43,6 +43,11 @@ async def upload(type: str = Form(...), file: UploadFile = File(...)):
     temporary = path.with_name(path.name + '.tmp')
     temporary.write_bytes(content if is_gzip else gzip.compress(content, mtime=0))
     temporary.replace(path)
+    metadata = {'type': type, 'filename': file.filename, 'collected_at': now.isoformat()}
+    meta_path = path.with_name(path.name + '.meta.json')
+    meta_temp = meta_path.with_suffix('.tmp')
+    meta_temp.write_text(json.dumps(metadata, ensure_ascii=False))
+    meta_temp.replace(meta_path)
     return {'status': 'success', 'type': type, 'file': path.relative_to(root).as_posix(),
             'uploaded_bytes': len(content), 'stored_bytes': path.stat().st_size}
 

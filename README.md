@@ -1,27 +1,107 @@
-# Self Harness：文件收集
+# Self Harness
 
-当前只做一件事：接收 `POST /upload` multipart 表单中的 `type` 和 `file`，按来源分类，用 gzip 保存原文件。不解析内容，不生成 material，不做分析或邮件。
+当前完成接口层：原始文件采集与 gzip 归档 → 按来源解析 → 每来源 SQLite → 统一材料查询。报告模型和邮件属于下一阶段。
 
-| type | 文件夹 |
-| --- | --- |
-| weight | weight |
-| sleep time | sleep |
-| app-screen-time | iphone_screen_time |
-| pc_screen_time | pc_screen_time |
-| todo | todo |
+## 四部分
 
-目录为 `raw/来源/接收日期/唯一前缀-原文件名.gz`。原文件名经过路径清理，同名上传不覆盖。已压缩文件原样保存，其他文件压缩后保存。对应关系和数据目录由 config.json 配置。
+| 部分 | 实现 | 职责 |
+| --- | --- | --- |
+| fetcher | interfaces/fetcher.py | 读取配置的 raw 目录；通过 MSAL/Graph 获取 Todo；本地获取 ActivityWatch 并 gzip 上传 |
+| parser | interfaces/parser.py | 纯解析五类数据，保留来源结构，校验时间和数值，不访问网络或数据库 |
+| database | interfaces/database.py | 每来源一个 SQLite，保存文件处理状态、材料与修订 |
+| operator | interfaces/operator.py | 入库、去重、区间查询、基线、状态、Todo 变化、PC 活跃时间 |
 
-服务器：`/root/test-server`，服务：`self-harness-collector.service`。
+8000 上传服务独立运行，只接收文件、按 type 分类、gzip 保存原始内容及接收时间 sidecar，不执行解析。
+
+## 配置和运行
+
+需要 Python 3.10+。相对路径以配置文件目录为基准。
 
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 cp config.example.json config.json
+# 文件收集服务
 .venv/bin/python server.py
-# PC 单次采集并 gzip 上传
+# 将来源目录的新文件入库；单独来源可加 sleep/weight/iphone_screen_time/pc_screen_time/todo
+.venv/bin/python interface.py ingest
+# 查看每个来源的处理、错误、待处理文件及最新观测状态
+.venv/bin/python interface.py status
+```
+
+配置包括 raw 数据目录（data_dir）、database_dir、来源级 raw_dir、监听地址、时区、来源参数及运行周期。
+手机端的 sleep time、weight、app-screen-time 定时上传属于外部约束，保持兼容。PC 使用 pc_screen_time，Todo 使用 todo。
+
+体重单位 `sources.weight.unit` 和 iPhone 统计窗口 `sources.iphone_screen_time.aggregation_window` 当前为 null，未擅自推断。配置明确后再次 ingest 会按新解析配置重新处理。
+
+## Todo 与 PC
+
+```sh
+# 服务器：使用缓存授权拉取列表、任务及 checklist，保存完整 raw 快照
+.venv/bin/python interface.py fetch todo
+# 仅首次/授权失效后的维护操作需要显式登录
+.venv/bin/python interface.py fetch todo --login
+# PC：读取 ActivityWatch、保存本地 gzip raw 并上传服务器
 .venv/bin/python collect_activitywatch.py --config config.json
 ```
 
-手机端保持原有定时上传方式。PC 定时采集和 Todo 定时拉取尚未安装。
-原有项目与历史数据已归档，新目录不自动导入旧数据。
+Todo cache_file 必须指向现有缓存，远端路径和客户端参数均通过 sources.todo 配置。失败的部分采集标记不完整，保留 raw，不能入库为有效快照。
+PC 必须在能访问 ActivityWatch 的机器运行。上传失败保留本地 gzip 文件，可重新上传；不会伪装为成功。
+
+## 查询
+
+```sh
+.venv/bin/python interface.py query sleep \
+  --start 2026-10-11T00:00:00+08:00 --end 2026-10-14T00:00:00+08:00
+.venv/bin/python interface.py latest-before weight --time 2026-10-13T00:00:00+08:00
+# core 使用的通用入口：每来源的材料、此前最近一条/快照和采集状态
+.venv/bin/python interface.py context \
+  --start 2026-10-13T00:00:00+08:00 --end 2026-10-14T00:00:00+08:00
+.venv/bin/python interface.py todo-changes \
+  --start 2026-10-13T00:00:00+08:00 --end 2026-10-14T00:00:00+08:00
+.venv/bin/python interface.py pc-active-time \
+  --start 2026-10-13T00:00:00+08:00 --end 2026-10-14T00:00:00+08:00
+```
+
+查询返回 source、observed_at、collected_at、data。比较时间为 UTC，范围左闭右开；区间按相交筛选，持续时间为零的事件不计入区间。
+PC 活跃应用时长使用同主机 AFK 的 not-afk 区间与窗口区间相交，不能直接累加窗口或浏览器时间。多个主机分别输出。
+Todo 的出现、消失、状态变化只代表相邻完整快照的差异，不证明准确事件时间或确定删除。缺失基线时明确标记。
+
+## 数据与重放
+
+```text
+raw/<source>/<接收日期>/*.gz
+raw/<source>/<接收日期>/*.gz.meta.json  # 新上传文件的实际接收时间
+raw/pc_screen_time/.../*.receipt.json  # PC 本地上传回执
+database/<source>.sqlite3
+```
+
+原始文件和凭据不提交 Git。旧接收文件没有 sidecar 时使用文件 mtime 作为采集时间，观测时间始终从内容读取。
+已处理文件跳过；新到达的重复内容推进版本水位，不重复生成同值业务记录；变化保留修订。睡眠以分期开始时间识别记录；PC 以 bucket+event ID 识别，以快照结束时间选当前版本。数据库保留修订，普通查询返回当前版本。
+解析失败记录错误并保留 raw，不影响其他来源和上传。修复后用 `ingest --retry-failed` 重试；解析版本或来源配置变化会重新处理旧文件。
+数据库可从 raw 重建，迁移时同时搬运 raw、数据库、授权缓存并更新配置。只应通过本项目流程写入 raw，已处理文件不原地修改。
+
+## 自动运行
+
+```sh
+# 在采集中心安装入库和 Todo 两个 systemd timer
+.venv/bin/python schedule.py --role server --install
+# 在 PC 当前用户安装 ActivityWatch timer
+.venv/bin/python schedule.py --role pc --install
+```
+
+不加 --install 只打印单元。周期来自 schedule 配置，默认入库 60 秒、Todo/PC 3600 秒；修改配置后重新安装单元。
+服务使用各自机器的当前项目路径与 Python，配置不依赖固定 IP。接收服务部署文件 collector.service 中路径按目标环境修改。
+
+当前部署：服务器 /root/test-server，self-harness-collector 接收服务；self-harness-ingest.timer、self-harness-todo.timer；PC 用户 self-harness-pc.timer。PC 用户 timer 依赖该用户的 systemd 会话和 ActivityWatch 正在运行，机器离线时不能采集上传。
+
+```sh
+systemctl status self-harness-collector.service
+systemctl list-timers 'self-harness-*'
+journalctl -u self-harness-ingest.service -u self-harness-todo.service
+systemctl --user status self-harness-pc.service
+```
+
+## 验证
+
+`.venv/bin/python checks/interfaces.py` 使用临时目录和标准库，验证 CSV 首行、重复文件、修订回退、跨日区间、失败隔离、PC 乱序水位与 AFK 时间、Todo 完整性和快照基线、iPhone 快照保留。不发送邮件，不访问外部来源。
