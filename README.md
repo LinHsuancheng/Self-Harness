@@ -52,7 +52,7 @@ flowchart LR
 
 已完成五个来源的采集、原始文件归档、结构化入库和多周期 operator，并部署了自动采集与入库任务。固定版本为 `operators-v0.1.0`。
 
-已在本地实现 core 单次报告生成与可选 Gmail 投递：读取 interface 周期材料，经 DeepSeek 分析后渲染并保存 HTML 报告；显式添加 `--send-email` 后通过 Gmail OAuth 发送。服务器运行副本尚未更新。
+已实现 core 单次报告生成与可选 Gmail 投递：读取 interface 周期材料，经 DeepSeek 分析后渲染并保存 HTML 报告；显式添加 `--send-email` 后通过 Gmail OAuth 发送。代码已推送至 GitHub 并部署到 `/root/test-server`；服务器配置、授权、原始数据、数据库和 Python 环境保留在运行目录，采集服务持续运行。
 
 ## 开始使用与参与
 
