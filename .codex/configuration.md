@@ -7,6 +7,8 @@
 | data_dir | 原始数据根目录 |
 | database_dir | 每来源 SQLite 根目录 |
 | reports_dir | HTML 报告输出目录，默认 `./reports` |
+| email.token_file | Gmail OAuth token JSON 路径，可使用绝对路径；文件需留在本地/部署环境并保持私密 |
+| email.to | `--send-email` 的收件人地址 |
 | timezone | 报告时区 |
 | listen | 接收服务 host/port |
 | folders | 上传 type 到来源目录的映射 |

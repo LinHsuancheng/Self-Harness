@@ -1,17 +1,9 @@
-# 邮件与 Google OAuth 资源
+# 邮件与 Google OAuth
 
-准备阶段已找到 Gmail OAuth 发送实现：
+邮件通过 Gmail API `users/me/messages/send` 投递，授权 scope 为 `https://www.googleapis.com/auth/gmail.send`。报告 HTML 是邮件正文，并带有纯文本备用内容。
 
-- ../stream-sieve/stream_sieve/delivery/gmail_api.py
-- /home/victor/codefields/gmail-oauth/auth.py
-- /home/victor/codefields/gmail-oauth/send_test.py
+本地授权文件 `/home/victor/codefields/gmail-oauth/token-self-harness.json` 已通过 refresh 验证，文件权限为 `0600`。使用 `config.json` 的 `email.token_file` 指向 token，`email.to` 设置收件人。token 和 OAuth 客户端凭据不得提交 Git 或随普通代码同步。
 
-实际授权缓存位于 /home/victor/codefields/gmail-oauth/token.json。发送 scope 为 gmail.send，发送路径为 Gmail API users/me/messages/send。
-
-2026-10-13 的刷新尝试返回 invalid_grant；邮件阶段先恢复现有授权，再复用发送能力。
-
-../noise-gate/noise_gate/delivery.py 提供 SMTP 发送参考。Google OAuth 的已确认资源位于 stream-sieve 与 gmail-oauth 项目。
-
-报告模型、prompt、授权位置、收件人和运行周期在后续集成中通过配置提供。
+邮件默认不发送。仅当运行报告命令时显式添加 `--send-email` 才会投递。先完成本地真实收件人验证，再安排服务器部署与周期运行。
 
 相关资源：[报告工作流](../workflows/reporting.md)、[当前状态](../project/status.md)。

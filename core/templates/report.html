@@ -18,11 +18,8 @@
     p { margin: 0; }
     ul { margin: 0; padding-left: 1.4rem; }
     li + li { margin-top: .65rem; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; text-align: left; }
-    th, td { padding: .6rem .5rem; border-bottom: 1px solid #e5e9e3; }
-    th { font-weight: 600; }
-    .note { margin-top: .75rem; color: #63746b; font-size: .9rem; }
+    li strong { color: #315b4a; }
+    li span { color: #63746b; }
     @media (max-width: 600px) { main { width: min(100% - 1rem, 900px); margin: .5rem auto 2rem; } header, section { padding: 1.25rem; } }
     @media print { :root { background: white; } body { color: black; } main { width: 100%; margin: 0; } header, section { break-inside: avoid; border-color: #bbb; background: white; } }
   </style>
@@ -31,10 +28,9 @@
   <main>
     <header><p class="eyebrow">SELF HARNESS · 周期回顾</p><h1>{{TITLE}}</h1><p class="period">{{PERIOD_LABEL}}</p></header>
     <section aria-labelledby="summary"><h2 id="summary">这段时间</h2><p>{{SUMMARY}}</p></section>
-    <section aria-labelledby="observations"><h2 id="observations">值得关注的观察</h2><ul>{{OBSERVATIONS}}</ul></section>
-    <section aria-labelledby="changes"><h2 id="changes">相比上期</h2><ul>{{CHANGES}}</ul></section>
-    <section aria-labelledby="recommendations"><h2 id="recommendations">下一步的小实验</h2><ul>{{RECOMMENDATIONS}}</ul></section>
-    <section aria-labelledby="coverage"><h2 id="coverage">数据覆盖</h2><div class="table-wrap"><table><thead><tr><th scope="col">来源</th><th scope="col">有效天数</th><th scope="col">记录数</th></tr></thead><tbody>{{COVERAGE}}</tbody></table></div><p class="note">有效天数和记录数直接来自本期材料，缺失记录不等于数值为零。</p></section>
+    <section aria-labelledby="observations"><h2 id="observations">分领域观察</h2><ul>{{OBSERVATIONS}}</ul></section>
+    <section aria-labelledby="changes"><h2 id="changes">值得关注的变化</h2><ul>{{CHANGES}}</ul></section>
+    <section aria-labelledby="recommendations"><h2 id="recommendations">下一步的小调整</h2><ul>{{RECOMMENDATIONS}}</ul></section>
   </main>
 </body>
 </html>

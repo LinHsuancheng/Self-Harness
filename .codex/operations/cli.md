@@ -15,6 +15,9 @@
 # 生成月报 HTML（先配置 .env 中的 DEEPSEEK_API_KEY）
 .venv/bin/python -m core.run --config config.json --level month --date 2026-10-13
 
+# 明确开启时，将生成的 HTML 报告通过 Gmail 发送给 config.json 的 email.to
+.venv/bin/python -m core.run --config config.json --level month --date 2026-10-13 --send-email
+
 # 单来源周期材料
 .venv/bin/python interface.py summarize sleep --level week --date 2026-10-13
 

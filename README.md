@@ -26,7 +26,7 @@ flowchart LR
     B --> C[原始文件与来源数据库]
     C --> D[周期统计材料]
     D --> E[core 分析与 HTML 报告]
-    E --> F[邮件反馈 · 下一阶段]
+    E --> F[可选 Gmail 邮件反馈]
 ```
 
 ## 架构
@@ -52,7 +52,7 @@ flowchart LR
 
 已完成五个来源的采集、原始文件归档、结构化入库和多周期 operator，并部署了自动采集与入库任务。固定版本为 `operators-v0.1.0`。
 
-已在本地实现 core 单次报告生成：读取 interface 周期材料，经 DeepSeek 分析后渲染并保存 HTML 报告。服务器运行副本尚未更新；下一阶段接入 Google OAuth 邮件投递。
+已在本地实现 core 单次报告生成与可选 Gmail 投递：读取 interface 周期材料，经 DeepSeek 分析后渲染并保存 HTML 报告；显式添加 `--send-email` 后通过 Gmail OAuth 发送。服务器运行副本尚未更新。
 
 ## 开始使用与参与
 

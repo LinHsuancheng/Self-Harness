@@ -5,8 +5,9 @@
 | server.py | 上传接收、分类、gzip 归档与接收信息 |
 | collect_activitywatch.py | PC 采集上传入口 |
 | interface.py | 获取、入库、查询与周期统计 CLI |
-| core/run.py | 获取周期材料、调用 DeepSeek 并生成 HTML 报告 |
-| core/prompts/report.md | 报告分析 prompt |
+| core/run.py | 获取周期材料、调用 DeepSeek、校验结构化报告并生成 HTML |
+| core/mail.py | 通过 Gmail OAuth 投递已保存的 HTML 报告 |
+| core/prompts/{day,week,month,quarter,half-year,year}.md | 按周期组织分析的独立 prompt；共享 day.md 的输出契约 |
 | core/templates/report.html | 本地渲染的独立 HTML 报告模板 |
 | schedule.py | systemd 单元生成与安装 |
 | collector.service | 接收服务单元 |

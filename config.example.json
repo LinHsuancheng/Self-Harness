@@ -20,6 +20,10 @@
   },
   "database_dir": "./database",
   "reports_dir": "./reports",
+  "email": {
+    "token_file": "./auth/token-self-harness.json",
+    "to": ""
+  },
   "max_uncompressed_bytes": 52428800,
   "sources": {
     "sleep": {},
