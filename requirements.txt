@@ -3,3 +3,5 @@ uvicorn
 python-multipart
 msal
 requests
+openai
+python-dotenv

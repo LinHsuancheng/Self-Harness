@@ -19,6 +19,7 @@
     "upload_url": "http://45.32.47.93:8000/upload"
   },
   "database_dir": "./database",
+  "reports_dir": "./reports",
   "max_uncompressed_bytes": 52428800,
   "sources": {
     "sleep": {},
