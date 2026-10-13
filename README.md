@@ -54,7 +54,7 @@ PC 必须在能访问 ActivityWatch 的机器运行。上传失败保留本地 g
 .venv/bin/python interface.py query sleep \
   --start 2026-10-11T00:00:00+08:00 --end 2026-10-14T00:00:00+08:00
 .venv/bin/python interface.py latest-before weight --time 2026-10-13T00:00:00+08:00
-# core 使用的通用入口：每来源的材料、此前最近一条/快照和采集状态
+# core 使用的通用入口：每来源的统计汇总
 .venv/bin/python interface.py context \
   --start 2026-10-13T00:00:00+08:00 --end 2026-10-14T00:00:00+08:00
 .venv/bin/python interface.py todo-changes \
@@ -63,7 +63,7 @@ PC 必须在能访问 ActivityWatch 的机器运行。上传失败保留本地 g
   --start 2026-10-13T00:00:00+08:00 --end 2026-10-14T00:00:00+08:00
 ```
 
-查询返回 source、observed_at、collected_at、data。比较时间为 UTC，范围左闭右开；区间按相交筛选，持续时间为零的事件不计入区间。
+细节 query 返回 source、observed_at、collected_at、data。比较时间为 UTC，范围左闭右开；区间按相交筛选，持续时间为零的事件不计入区间。
 PC 活跃应用时长使用同主机 AFK 的 not-afk 区间与窗口区间相交，不能直接累加窗口或浏览器时间。多个主机分别输出。
 Todo 的出现、消失、状态变化只代表相邻完整快照的差异，不证明准确事件时间或确定删除。缺失基线时明确标记。
 
@@ -105,3 +105,26 @@ systemctl --user status self-harness-pc.service
 ## 验证
 
 `.venv/bin/python checks/interfaces.py` 使用临时目录和标准库，验证 CSV 首行、重复文件、修订回退、跨日区间、失败隔离、PC 乱序水位与 AFK 时间、Todo 完整性和快照基线、iPhone 快照保留。不发送邮件，不访问外部来源。
+
+## 汇总 operator
+
+```sh
+.venv/bin/python interface.py summarize weight \
+  --start 2026-10-13T00:00:00+08:00 --end 2026-10-14T00:00:00+08:00
+.venv/bin/python interface.py context \
+  --start 2026-10-13T00:00:00+08:00 --end 2026-10-14T00:00:00+08:00
+```
+
+`summarize` 返回单个来源的 `source`、`period` 和 `summary`；`context` 返回全部来源的汇总，供 core 直接读取。细节继续由 query 查询。
+
+| 来源 | summary |
+| --- | --- |
+| 体重 | min、max、mean、last、change、measurement_count、unit |
+| 睡眠 | sleep_hours、awake_hours、start、end、stages |
+| iPhone | total_minutes、按时长排序的 apps（minutes/share）、daily |
+| PC | total_minutes、按时长排序的 apps（minutes/share）、hourly |
+| Todo | completed_count、completed_tasks、pending_count、appeared_count、disappeared_count、changed_count |
+
+iPhone 取报告时区每天末次快照计算分布。睡眠按查询区间统计各阶段时长。PC 汇总复用现有活跃应用计算，按小时输出使用分布。Todo 按实际完成时间统计，并读取期末之后第一份快照捕获跨日采集的完成任务；期末状态使用区间内最新快照。
+
+运行 `.venv/bin/python checks/summaries.py` 可验证五类汇总和精简 context 的计算结果。

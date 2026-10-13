@@ -26,9 +26,9 @@ def main():
     fetch = commands.add_parser('fetch'); fetch.add_argument('source',choices=['todo','pc_screen_time']); fetch.add_argument('--login',action='store_true')
     ingest = commands.add_parser('ingest'); ingest.add_argument('source',nargs='?',default='all'); ingest.add_argument('--retry-failed',action='store_true')
     stat = commands.add_parser('status'); stat.add_argument('source',nargs='?',default='all')
-    for name in ('query','latest-before'):
+    for name in ('query','summarize','latest-before'):
         command=commands.add_parser(name); command.add_argument('source')
-        if name=='query':
+        if name in ('query','summarize'):
             command.add_argument('--start',required=True); command.add_argument('--end',required=True)
         else:
             command.add_argument('--time',required=True)
@@ -47,8 +47,9 @@ def main():
                 failed=failed or bool(output[source].get('failed',0))
             except Exception as exc:
                 output[source]={'error':str(exc)}; failed=True
-    elif args.command=='query':
-        output=operator.query(config,args.source,args.start,args.end)
+    elif args.command in ('query','summarize'):
+        operation=operator.query if args.command=='query' else operator.summarize
+        output=operation(config,args.source,args.start,args.end)
     elif args.command=='latest-before':
         output=operator.latest_before(config,args.source,args.time)
     else:

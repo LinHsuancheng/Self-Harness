@@ -6,7 +6,7 @@ from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 
-from . import fetcher, parser
+from . import fetcher, parser, summary
 from .database import Database
 
 
@@ -68,10 +68,28 @@ def status(config, source):
         return result
 
 
+def summarize(config, source, start, end):
+    rows=query(config,source,start,end)
+    if source=='weight':
+        result=summary.weight(rows,latest_before(config,source,start))
+    elif source=='sleep':
+        result=summary.sleep(rows,start,end)
+    elif source=='iphone_screen_time':
+        result=summary.iphone(rows,config.get('timezone','UTC'))
+    elif source=='pc_screen_time':
+        result=summary.pc(config,start,end,pc_active_time)
+    elif source=='todo':
+        with closing(database(config,source)) as db:
+            following=db.rows(start=end)
+            following=material(source,following[0]) if following else None
+        result=summary.todo(rows,latest_before(config,source,start),start,end,following)
+    else:
+        raise ValueError('Unsupported source: '+source)
+    return {'source':source,'period':{'start':start,'end':end},'summary':result}
+
+
 def context(config, start, end):
-    return {source: {'materials':query(config,source,start,end),
-                     'baseline':latest_before(config,source,start), 'status':status(config,source)}
-            for source in config['sources']}
+    return {source:summarize(config,source,start,end) for source in config['sources']}
 
 
 def todo_changes(config, start, end):
