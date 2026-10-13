@@ -111,7 +111,7 @@ Prompt 单独保存，方便调整反馈方式。报告保留在磁盘，邮件�
 
 ### 接口层实施状态（2026-10-13）
 
-五个来源已实现 fetcher/parser/SQLite/operator，入口为 `interface.py`；文件上传服务继续独立运行。 `summarize` 提供单个来源的统计汇总，`context` 汇集五类统计结果，供 core 使用；细节通过 `query` 获取。汇总输出为 source、period、summary，包含体重范围、睡眠时长、App/小时分布及任务完成和变化。原准备阶段脚本与历史数据库已归档，不作为正式实现依赖。
+五个来源已实现 fetcher/parser/SQLite/operator，入口为 `interface.py`；文件上传服务继续独立运行。 `summarize` 提供单个来源的统计汇总，`context` 汇集五类统计结果，供 core 使用；细节通过 `query` 获取。汇总输出为 source、period、summary，包含体重范围、睡眠时长、App/小时分布、浏览器网站域名与页面标题时长分布及任务完成和变化。原准备阶段脚本与历史数据库已归档，不作为正式实现依赖。
 
 Todo 已在当前服务器使用配置的 MSAL 缓存成功获取完整列表、任务和 checklist 并入库；正常运行使用缓存授权，授权失效明确报错，显式 `fetch todo --login` 只用于维护。每次完整采集保留快照，比较结果不等于完整事件历史。
 

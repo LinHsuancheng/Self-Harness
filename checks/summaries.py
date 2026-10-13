@@ -23,7 +23,11 @@ with tempfile.TemporaryDirectory() as directory:
     buckets=[{'bucket':{'id':'afk','type':'afkstatus','hostname':'pc'},'events':[
         {'id':1,'timestamp':'2026-10-13T08:00:00+08:00','duration':3600,'data':{'status':'not-afk'}}]},
         {'bucket':{'id':'window','type':'currentwindow','hostname':'pc'},'events':[
-        {'id':2,'timestamp':'2026-10-13T08:00:00+08:00','duration':3600,'data':{'app':'Editor'}}]}]
+        {'id':2,'timestamp':'2026-10-13T08:00:00+08:00','duration':3600,'data':{'app':'msedge.exe'}}]}]
+    buckets.append({'bucket':{'id':'web','type':'web.tab.current','hostname':'pc'},'events':[
+        {'id':3,'timestamp':'2026-10-13T08:00:00+08:00','duration':1800,'data':{'url':'https://example.com/read','title':'Reading'}},
+        {'id':5,'timestamp':'2026-10-13T10:00:00+08:00','duration':3600,'data':{'url':'https://background.test','title':'Background'}},
+        {'id':4,'timestamp':'2026-10-13T08:30:00+08:00','duration':1800,'data':{'url':'https://example.org/work','title':'Working'}}]})
     put('pc_screen_time','p.gz',json.dumps({'start':start,'end':end,'duration_unit':'seconds','buckets':buckets}))
     for i,observed in enumerate(('2026-10-12T23:00:00+08:00','2026-10-13T20:00:00+08:00')):
         task={'id':'t','title':'Ship operator','status':'notStarted' if i==0 else 'completed'}
@@ -37,6 +41,8 @@ with tempfile.TemporaryDirectory() as directory:
     assert phone['total_minutes']==120 and phone['apps'][0]['share']==0.75
     pc=summarize(config,'pc_screen_time',start,end)['summary']
     assert pc['total_minutes']==60 and sum(h['minutes'] for h in pc['hourly'])==60
+    assert len(pc['websites'])==2 and sum(site['minutes'] for site in pc['websites'])==60
+    assert pc['websites'][0]['pages'][0]['title']=='Reading'
     todo=summarize(config,'todo',start,end)['summary']
     assert todo['completed_count']==1 and todo['pending_count']==0
     result=context(config,start,end)

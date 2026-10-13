@@ -78,6 +78,7 @@ def summarize(config, source, start, end):
         result=summary.iphone(rows,config.get('timezone','UTC'))
     elif source=='pc_screen_time':
         result=summary.pc(config,start,end,pc_active_time)
+        result['websites']=web_activity(config,start,end)
     elif source=='todo':
         with closing(database(config,source)) as db:
             following=db.rows(start=end)
@@ -142,3 +143,44 @@ def pc_active_time(config, start, end):
             totals[key]=totals.get(key,0)+seconds
     return {'duration_unit':'seconds', 'apps':[{'hostname':host,'app':app,'active_duration':seconds} for (host,app),seconds in totals.items()],
             'afk_data_present':any(r['data']['bucket_type']=='afkstatus' for r in rows)}
+
+
+def web_activity(config, start, end):
+    """Website and page time within the active browser's foreground intervals."""
+    from collections import defaultdict
+    from urllib.parse import urlsplit
+    rows=query(config,'pc_screen_time',start,end)
+    lower,upper=datetime.fromisoformat(parser.utc(start)),datetime.fromisoformat(parser.utc(end))
+    browser_apps={app.lower() for app in config['sources']['pc_screen_time'].get('browser_apps',['msedge.exe'])}
+    windows=defaultdict(list);active=defaultdict(list);web=[]
+    for row in rows:
+        data=row['data'];kind=data['bucket_type'];details=data['details'];host=data.get('hostname')
+        interval=(max(lower,datetime.fromisoformat(data['start'])),min(upper,datetime.fromisoformat(data['end'])))
+        if kind=='currentwindow' and details['app'].lower() in browser_apps:
+            windows[host].append(interval)
+        elif kind=='afkstatus' and details['status']=='not-afk':
+            active[host].append(interval)
+        elif kind=='web.tab.current':
+            web.append((host,interval,details))
+    sites=defaultdict(float);pages=defaultdict(lambda:defaultdict(float))
+    for host,(begin,finish),details in web:
+        overlaps=[]
+        for window_start,window_end in windows[host]:
+            a,b=max(begin,window_start),min(finish,window_end)
+            if a>=b:continue
+            overlaps.extend((max(a,x),min(b,y)) for x,y in active[host] if max(a,x)<min(b,y))
+        merged=[]
+        for a,b in sorted(overlaps):
+            if merged and a<=merged[-1][1]:merged[-1]=(merged[-1][0],max(merged[-1][1],b))
+            else:merged.append((a,b))
+        minutes=sum((b-a).total_seconds() for a,b in merged)/60
+        if not minutes:continue
+        url=urlsplit(details['url'])
+        domain=url.netloc if url.scheme in ('http','https') else url.scheme+'://'+url.netloc
+        sites[domain]+=minutes
+        pages[domain][details['title']]+=minutes
+    total=sum(sites.values())
+    return [{'domain':domain,'minutes':round(minutes,3),'share':round(minutes/total,4),
+             'pages':[{'title':title,'minutes':round(duration,3)}
+                      for title,duration in sorted(pages[domain].items(),key=lambda item:(-item[1],item[0]))]}
+            for domain,minutes in sorted(sites.items(),key=lambda item:(-item[1],item[0]))]
