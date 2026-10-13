@@ -14,6 +14,7 @@
 
 - Keep email, scheduling, and server deployment out of scope.
 - Keep `.env` private and `.env.example` tracked.
+- Keep generated reports under the default `reports/` directory Git-ignored; custom in-repository output paths need a matching ignore rule.
 - Ground analysis in interface output and escape generated content before rendering HTML.
 - Preserve user-owned uncommitted changes.
 - Do not add or run tests in this task.
@@ -33,6 +34,7 @@
 - Environment variables: `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `DEEPSEEK_MODEL`.
 
 - [ ] Add `!.env.example` after the `.env.*` ignore rule.
+- [ ] Ignore generated reports in the default `reports/` output directory.
 - [ ] Add `"reports_dir": "./reports"` to the example config.
 - [ ] Add `openai` and `python-dotenv` dependencies.
 - [ ] Add a non-secret `.env.example` using `https://api.deepseek.com` and `deepseek-flash` defaults.

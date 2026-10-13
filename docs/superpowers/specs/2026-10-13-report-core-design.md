@@ -24,7 +24,7 @@ DeepSeek's documented base URL is `https://api.deepseek.com`; model and endpoint
 - `core/prompts/report.md`: report analysis instructions and required content.
 - `core/templates/report.html`: responsive standalone visual template.
 - `.env.example`: variable names and non-secret defaults; `.env` remains ignored.
-- `.gitignore`: keep `.env` private while allowing `.env.example` to be tracked.
+- `.gitignore`: keep `.env` and generated reports private while allowing `.env.example` to be tracked.
 - `config.example.json`: reports output directory and existing interface data paths.
 - `requirements.txt`: OpenAI SDK and `.env` loader dependencies.
 
@@ -35,3 +35,5 @@ Missing credentials, failed interface runs, API errors, incomplete responses, in
 ## Out of scope
 
 Email delivery, recurring schedules, historical report context, report database, and deployment to the server.
+
+The default generated report directory is Git-ignored because reports contain personal material. If `reports_dir` points inside the repository elsewhere, that path must be ignored separately.

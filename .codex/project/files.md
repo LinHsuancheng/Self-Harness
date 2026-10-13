@@ -12,7 +12,7 @@
 | collector.service | 接收服务单元 |
 | config.example.json | 配置示例 |
 | .env.example | DeepSeek 环境变量示例（真实 `.env` 不提交） |
-| reports/ | 生成的 HTML 报告输出目录 |
+| reports/ | 默认 HTML 报告输出目录；可通过 `reports_dir` 修改。自定义输出目录若位于仓库内，需单独加入 Git 忽略规则 |
 | requirements.txt | Python 依赖 |
 | interfaces/fetcher.py | 文件、Graph 和 ActivityWatch 获取 |
 | interfaces/parser.py | 五来源纯解析 |

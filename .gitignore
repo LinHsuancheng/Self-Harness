@@ -14,3 +14,4 @@ auth/
 database/
 *.sqlite3
 *.sqlite3-*
+/reports/
