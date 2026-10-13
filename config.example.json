@@ -1,0 +1,21 @@
+{
+  "data_dir": "./raw",
+  "timezone": "Asia/Singapore",
+  "max_upload_bytes": 10485760,
+  "listen": {
+    "host": "0.0.0.0",
+    "port": 8000
+  },
+  "folders": {
+    "weight": "weight",
+    "sleep time": "sleep",
+    "app-screen-time": "iphone_screen_time",
+    "pc_screen_time": "pc_screen_time",
+    "todo": "todo"
+  },
+  "activitywatch": {
+    "url": "http://localhost:5600",
+    "hours": 24,
+    "upload_url": "http://45.32.47.93:8000/upload"
+  }
+}

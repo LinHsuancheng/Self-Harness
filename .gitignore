@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+config.json
+observation/
+*token*.json
+*.log
+raw/
+auth/
+.env
+.env.*
+*.db
+*.db-*

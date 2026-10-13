@@ -1,0 +1,15 @@
+[Unit]
+Description=Self Harness raw material collector
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/test-server
+Environment=SELF_HARNESS_CONFIG=/root/test-server/config.json
+ExecStart=/root/test-server/.venv/bin/python /root/test-server/server.py
+Restart=on-failure
+RestartSec=3
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
