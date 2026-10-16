@@ -2,167 +2,331 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{{TITLE}}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400&family=Jost:wght@300;400&family=JetBrains+Mono:wght@300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400&family=JetBrains+Mono:wght@300&display=swap" rel="stylesheet">
 <style>
+/* Soft Editorial — full-screen slide deck, one section per viewport */
 :root {
-  --bg:      #192b1b;
-  --bg2:     #1e3220;
-  --fg:      #d4cfbf;
-  --fg2:     #a09b8c;
-  --accent:  #c8524a;
-  --line:    rgba(212,207,191,.12);
-  --tag-bg:  rgba(200,82,74,.08);
-  --tag-bd:  rgba(200,82,74,.35);
+  --bg:     #F5F2EC;
+  --fg:     #1B1910;
+  --fg2:    #8A8278;
+  --accent: #5A6A53;
+  --rule:   rgba(27,25,16,.09);
+  --tag-bg: rgba(90,106,83,.07);
+  --tag-bd: rgba(90,106,83,.22);
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--fg);font-family:'Jost',sans-serif;font-weight:300;font-size:15px;line-height:1.65}
-a{color:var(--accent);text-decoration:none}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0 }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg) }
+body { font-family: 'DM Sans', sans-serif; font-weight: 300; font-size: 19px; line-height: 1.65 }
 
-.page{max-width:680px;margin:0 auto;padding:48px 24px 80px}
+/* deck */
+.deck { position: fixed; inset: 0 }
+.track { display: flex; width: 100%; height: 100%; transition: transform .42s cubic-bezier(.4,0,.2,1) }
 
-/* ── header ─────────────────────────────────────────────────────── */
-.hdr{padding:40px 0 32px;border-bottom:1px solid var(--line)}
-.hdr-label{font-family:'JetBrains Mono',monospace;font-weight:300;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
-.hdr-title{font-family:'Playfair Display',serif;font-size:clamp(28px,5vw,38px);font-weight:400;line-height:1.2;margin-bottom:16px}
-.hdr-summary{font-size:14px;color:var(--fg2);line-height:1.7}
+/* slides */
+.slide {
+  flex: 0 0 100%;
+  width: 100%; height: 100%;
+  overflow-y: auto; overflow-x: hidden;
+  padding-top: 64px; padding-bottom: 72px;
+  padding-left: max(52px, env(safe-area-inset-left,0px));
+  padding-right: max(52px, env(safe-area-inset-right,0px));
+}
+.slide-inner { max-width: 620px; margin: 0 auto }
+.slide.s-cover { display: flex; align-items: center; justify-content: center }
 
-/* ── section ─────────────────────────────────────────────────────── */
-.sec{padding:36px 0;border-bottom:1px solid var(--line)}
-.sec-kicker{font-family:'JetBrains Mono',monospace;font-weight:300;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:20px;position:relative;padding-bottom:10px}
-.sec-kicker::after{content:'';position:absolute;bottom:0;left:0;width:32px;height:1px;background:var(--accent)}
-.sec-insight{font-size:13.5px;color:var(--fg2);line-height:1.7;margin-top:20px}
+/* navigation buttons */
+.nav-btn {
+  position: fixed; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: var(--fg2); font-size: 44px; padding: 20px 22px;
+  transition: color .2s, opacity .2s; z-index: 20; line-height: 1;
+}
+.nav-btn:hover { color: var(--fg) }
+.nav-btn.disabled { opacity: .15; pointer-events: none }
+.nav-prev { left: max(0px, env(safe-area-inset-left,0px)) }
+.nav-next { right: max(0px, env(safe-area-inset-right,0px)) }
 
-/* ── stat-big ────────────────────────────────────────────────────── */
-.stat-row{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
-.stat-big{font-family:'Playfair Display',serif;font-size:52px;font-weight:400;color:var(--accent);line-height:1}
-.stat-unit{font-family:'Jost',sans-serif;font-size:16px;color:var(--fg2)}
-.stat-change{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--fg2);margin-bottom:20px}
+/* dot nav */
+.dots {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 8px; z-index: 20;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--fg); opacity: .18; cursor: pointer;
+  border: none; transition: opacity .2s, transform .2s;
+}
+.dot.on { opacity: .7; transform: scale(1.4) }
 
-/* ── bar chart ───────────────────────────────────────────────────── */
-.bars{margin-top:4px}
-.bar-row{display:grid;grid-template-columns:160px 1fr 52px 34px;align-items:center;gap:8px;padding:4px 0}
-.bar-name{font-size:13px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar-track{background:rgba(212,207,191,.08);border-radius:2px;height:6px;overflow:hidden}
-.bar-fill{height:100%;background:var(--accent);border-radius:2px;opacity:.75}
-.bar-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fg);text-align:right}
-.bar-pct{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fg2);text-align:right}
+/* slide counter */
+.slide-no {
+  position: fixed; top: 22px;
+  right: max(28px, env(safe-area-inset-right,0px));
+  font-family: 'JetBrains Mono', monospace; font-size: 14px;
+  color: var(--fg2); letter-spacing: .08em; z-index: 20;
+}
 
-/* ── session tags ────────────────────────────────────────────────── */
-.sessions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-.session-tag{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--tag-bg);border:1px solid var(--tag-bd);border-radius:3px;padding:3px 9px;color:var(--fg)}
+/* cover */
+.cover-kicker {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 28px;
+}
+.cover-title {
+  font-family: 'Cormorant Garamond', serif; font-weight: 300;
+  font-size: clamp(38px, 6vw, 54px); line-height: 1.15;
+  text-wrap: balance; margin-bottom: 20px;
+}
+.cover-rule { width: 44px; height: 1px; background: var(--accent); margin-bottom: 20px }
+.cover-summary { font-size: 19px; color: var(--fg2); line-height: 1.75; max-width: 500px }
 
-/* ── sub-kicker for stages ───────────────────────────────────────── */
-.sub-kicker{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg2);margin-bottom:10px;margin-top:20px}
+/* section kicker */
+.kicker {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 22px;
+}
 
-/* ── weight ──────────────────────────────────────────────────────── */
-.weight-range{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--fg2);margin-top:4px}
+/* large stat */
+.stat-line { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px }
+.stat-num {
+  font-family: 'Cormorant Garamond', serif; font-weight: 300;
+  font-size: clamp(64px, 10vw, 80px); line-height: 1;
+  color: var(--fg); font-variant-numeric: tabular-nums;
+}
+.stat-unit { font-family: 'DM Sans', sans-serif; font-size: 24px; color: var(--fg2) }
+.delta {
+  font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--fg2);
+  margin-bottom: 24px; min-height: 20px;
+}
 
-/* ── todo counts ─────────────────────────────────────────────────── */
-.todo-counts{display:flex;gap:24px;margin-bottom:20px;flex-wrap:wrap}
-.todo-counts .cnt{text-align:center}
-.todo-counts .cnt-num{font-family:'Playfair Display',serif;font-size:32px;color:var(--accent);display:block;line-height:1}
-.todo-counts .cnt-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg2);margin-top:4px;display:block}
-.todo-tasks{margin-top:16px}
-.task-item{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}
-.task-dash{color:var(--accent);flex-shrink:0}
-.task-name{font-size:13.5px;color:var(--fg)}
+/* insight — AI text */
+.insight {
+  font-family: 'Cormorant Garamond', serif; font-style: italic;
+  font-size: 21px; line-height: 1.7; color: var(--fg2);
+  border-left: 1px solid rgba(27,25,16,.12); padding-left: 16px;
+  margin-top: 26px; max-width: 520px;
+}
 
-/* ── changes & recommendations ───────────────────────────────────── */
-.change-item,.rec-item{padding:14px 0;border-bottom:1px solid var(--line)}
-.change-area,.rec-action{font-size:14px;color:var(--fg);margin-bottom:4px;font-weight:400}
-.change-obs,.rec-reason{font-size:13px;color:var(--fg2);line-height:1.6}
-.change-trend{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);margin-top:4px}
+/* bar chart */
+.bars { margin: 2px 0 }
+.bar-row {
+  display: grid; grid-template-columns: 140px 1fr 58px 36px;
+  align-items: center; gap: 10px; padding: 6px 0;
+}
+@media (max-width: 480px) { .bar-row { grid-template-columns: 96px 1fr 44px 0 } .bar-pct { display:none } }
+.bar-name { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.bar-track { height: 5px; background: var(--rule); border-radius: 2px; overflow: hidden }
+.bar-fill { height: 100%; background: var(--accent); border-radius: 2px; opacity: .6 }
+.bar-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums }
+.bar-pct { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--fg2); text-align: right }
 
-/* ── footer ──────────────────────────────────────────────────────── */
-.footer{padding-top:40px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fg2);text-align:center;letter-spacing:.06em}
+/* sleep sessions */
+.sessions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px }
+.session-tag {
+  font-family: 'JetBrains Mono', monospace; font-size: 14px;
+  border: 1px solid var(--tag-bd); background: var(--tag-bg);
+  border-radius: 2px; padding: 4px 12px;
+}
+.sub-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); margin-bottom: 10px;
+}
 
-.empty{font-size:13px;color:var(--fg2);font-style:italic}
+/* weight */
+.weight-range { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--fg2); margin-top: 4px }
+
+/* todo counts */
+.counts { display: flex; gap: 36px; margin-bottom: 24px; flex-wrap: wrap }
+.cnt-num {
+  font-family: 'Cormorant Garamond', serif; font-weight: 300;
+  font-size: 54px; display: block; line-height: 1; font-variant-numeric: tabular-nums;
+}
+.cnt-lbl {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--fg2);
+  margin-top: 4px; display: block;
+}
+.task-list { border-top: 1px solid var(--rule) }
+.task-item {
+  display: flex; gap: 12px; padding: 8px 0;
+  border-bottom: 1px solid var(--rule); font-size: 17px;
+}
+.task-dash { color: var(--accent); flex-shrink: 0; font-family: 'JetBrains Mono', monospace }
+
+/* changes & recommendations */
+.cr-grid { display: grid; grid-template-columns: 1fr; gap: 0 }
+@media (min-width: 600px) { .cr-grid { grid-template-columns: 1fr 1fr; gap: 0 40px } }
+.change-item, .rec-item { padding: 13px 0; border-bottom: 1px solid var(--rule) }
+.change-item:last-child, .rec-item:last-child { border-bottom: none }
+.change-area, .rec-action { font-size: 18px; font-weight: 400; margin-bottom: 4px }
+.change-obs, .rec-reason { font-size: 16px; color: var(--fg2); line-height: 1.6 }
+.change-trend { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent); margin-top: 4px; letter-spacing:.04em }
+
+/* footer on last slide */
+.slide-footer {
+  margin-top: 32px; font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; color: var(--fg2); letter-spacing: .06em;
+}
+
+.empty { font-size: 16px; color: var(--fg2); font-style: italic }
 </style>
 </head>
 <body>
-<div class="page">
+<div class="deck">
+  <div class="track" id="track">
 
-  <!-- header -->
-  <header class="hdr">
-    <p class="hdr-label">{{PERIOD_LABEL}}</p>
-    <h1 class="hdr-title">{{TITLE}}</h1>
-    <p class="hdr-summary">{{SUMMARY}}</p>
-  </header>
-
-  <!-- 01 sleep -->
-  <section class="sec">
-    <p class="sec-kicker">01 · 睡眠</p>
-    <div class="stat-row">
-      <span class="stat-big">{{SLEEP_STAT}}</span>
+    <!-- 1 · cover -->
+    <div class="slide s-cover">
+      <div class="slide-inner">
+        <p class="cover-kicker">{{PERIOD_LABEL}}</p>
+        <h1 class="cover-title">{{TITLE}}</h1>
+        <div class="cover-rule"></div>
+        <p class="cover-summary">{{SUMMARY}}</p>
+      </div>
     </div>
-    <p class="stat-change">{{SLEEP_CHANGE}}</p>
-    <div class="sessions">{{SLEEP_SESSIONS}}</div>
-    <p class="sub-kicker">睡眠阶段</p>
-    <div class="bars">{{SLEEP_STAGES}}</div>
-    <p class="sec-insight">{{INSIGHT_SLEEP}}</p>
-  </section>
 
-  <!-- 02 PC usage -->
-  <section class="sec">
-    <p class="sec-kicker">02 · PC 使用</p>
-    <div class="stat-row">
-      <span class="stat-big">{{PC_STAT}}</span>
-      <span class="stat-unit">min · {{PC_HOURS}}</span>
+    <!-- 2 · sleep -->
+    <div class="slide">
+      <div class="slide-inner">
+        <p class="kicker">睡眠</p>
+        <div class="stat-line"><span class="stat-num">{{SLEEP_STAT}}</span></div>
+        <p class="delta">{{SLEEP_CHANGE}}</p>
+        <div class="sessions">{{SLEEP_SESSIONS}}</div>
+        <p class="sub-label">睡眠阶段</p>
+        <div class="bars">{{SLEEP_STAGES}}</div>
+        <p class="insight">{{INSIGHT_SLEEP}}</p>
+      </div>
     </div>
-    <p class="stat-change">{{PC_CHANGE}}</p>
-    <div class="bars">{{PC_BARS}}</div>
-    <p class="sec-insight">{{INSIGHT_PC}}</p>
-  </section>
 
-  <!-- 03 iPhone usage -->
-  <section class="sec">
-    <p class="sec-kicker">03 · iPhone 使用</p>
-    <div class="stat-row">
-      <span class="stat-big">{{IPHONE_STAT}}</span>
-      <span class="stat-unit">min · {{IPHONE_HOURS}}</span>
+    <!-- 3 · PC -->
+    <div class="slide">
+      <div class="slide-inner">
+        <p class="kicker">PC 使用</p>
+        <div class="stat-line">
+          <span class="stat-num">{{PC_STAT}}</span>
+          <span class="stat-unit">min &nbsp;·&nbsp; {{PC_HOURS}}</span>
+        </div>
+        <p class="delta">{{PC_CHANGE}}</p>
+        <div class="bars">{{PC_BARS}}</div>
+        <p class="insight">{{INSIGHT_PC}}</p>
+      </div>
     </div>
-    <p class="stat-change">{{IPHONE_CHANGE}}</p>
-    <div class="bars">{{IPHONE_BARS}}</div>
-    <p class="sec-insight">{{INSIGHT_IPHONE}}</p>
-  </section>
 
-  <!-- 04 weight -->
-  <section class="sec">
-    <p class="sec-kicker">04 · 体重</p>
-    <div class="stat-row">
-      <span class="stat-big">{{WEIGHT_STAT}}</span>
-      <span class="stat-unit">kg</span>
+    <!-- 4 · iPhone -->
+    <div class="slide">
+      <div class="slide-inner">
+        <p class="kicker">iPhone 使用</p>
+        <div class="stat-line">
+          <span class="stat-num">{{IPHONE_STAT}}</span>
+          <span class="stat-unit">min &nbsp;·&nbsp; {{IPHONE_HOURS}}</span>
+        </div>
+        <p class="delta">{{IPHONE_CHANGE}}</p>
+        <div class="bars">{{IPHONE_BARS}}</div>
+        <p class="insight">{{INSIGHT_IPHONE}}</p>
+      </div>
     </div>
-    <p class="stat-change">{{WEIGHT_CHANGE}}</p>
-    <p class="weight-range">{{WEIGHT_RANGE}}</p>
-    <p class="sec-insight">{{INSIGHT_WEIGHT}}</p>
-  </section>
 
-  <!-- 05 tasks -->
-  <section class="sec">
-    <p class="sec-kicker">05 · 任务</p>
-    <div class="todo-counts">
-      <div class="cnt"><span class="cnt-num">{{TODO_COMPLETED_COUNT}}</span><span class="cnt-label">完成</span></div>
-      <div class="cnt"><span class="cnt-num">{{TODO_PENDING_COUNT}}</span><span class="cnt-label">待办</span></div>
-      <div class="cnt"><span class="cnt-num">{{TODO_APPEARED_COUNT}}</span><span class="cnt-label">新增</span></div>
-      <div class="cnt"><span class="cnt-num">{{TODO_STALLED_COUNT}}</span><span class="cnt-label">滞留</span></div>
+    <!-- 5 · weight -->
+    <div class="slide">
+      <div class="slide-inner">
+        <p class="kicker">体重</p>
+        <div class="stat-line">
+          <span class="stat-num">{{WEIGHT_STAT}}</span>
+          <span class="stat-unit">kg</span>
+        </div>
+        <p class="delta">{{WEIGHT_CHANGE}}</p>
+        <p class="weight-range">{{WEIGHT_RANGE}}</p>
+        <p class="insight">{{INSIGHT_WEIGHT}}</p>
+      </div>
     </div>
-    <div class="todo-tasks">{{TODO_COMPLETED}}</div>
-    <p class="sec-insight">{{INSIGHT_TASKS}}</p>
-  </section>
 
-  <!-- 06 changes & recommendations -->
-  <section class="sec">
-    <p class="sec-kicker">06 · 变化与建议</p>
-    <div class="changes">{{CHANGES}}</div>
-    <div class="recs" style="margin-top:24px">{{RECOMMENDATIONS}}</div>
-  </section>
+    <!-- 6 · tasks -->
+    <div class="slide">
+      <div class="slide-inner">
+        <p class="kicker">任务</p>
+        <div class="counts">
+          <div><span class="cnt-num">{{TODO_COMPLETED_COUNT}}</span><span class="cnt-lbl">完成</span></div>
+          <div><span class="cnt-num">{{TODO_PENDING_COUNT}}</span><span class="cnt-lbl">待办</span></div>
+          <div><span class="cnt-num">{{TODO_APPEARED_COUNT}}</span><span class="cnt-lbl">新增</span></div>
+          <div><span class="cnt-num">{{TODO_STALLED_COUNT}}</span><span class="cnt-lbl">滞留</span></div>
+        </div>
+        <div class="task-list">{{TODO_COMPLETED}}</div>
+        <p class="insight">{{INSIGHT_TASKS}}</p>
+      </div>
+    </div>
 
-  <footer class="footer">Self Harness · 自动生成</footer>
+    <!-- 7 · changes & recommendations -->
+    <div class="slide">
+      <div class="slide-inner">
+        <p class="kicker">变化与建议</p>
+        <div class="cr-grid">
+          <div>{{CHANGES}}</div>
+          <div>{{RECOMMENDATIONS}}</div>
+        </div>
+        <p class="slide-footer">Self Harness · 自动生成</p>
+      </div>
+    </div>
 
+  </div><!-- /track -->
+
+  <button class="nav-btn nav-prev disabled" id="prev" aria-label="上一页">&#8249;</button>
+  <button class="nav-btn nav-next" id="next" aria-label="下一页">&#8250;</button>
+  <div class="dots" id="dots"></div>
+  <div class="slide-no" id="slide-no">1 / 7</div>
 </div>
+
+<script>
+(function() {
+  var TOTAL = 7;
+  var cur = 0;
+  var track = document.getElementById('track');
+  var prev = document.getElementById('prev');
+  var next = document.getElementById('next');
+  var slideNo = document.getElementById('slide-no');
+  var dotsEl = document.getElementById('dots');
+
+  for (var i = 0; i < TOTAL; i++) {
+    var d = document.createElement('button');
+    d.className = 'dot' + (i === 0 ? ' on' : '');
+    d.setAttribute('aria-label', '第' + (i + 1) + '页');
+    d.dataset.i = i;
+    dotsEl.appendChild(d);
+  }
+
+  function go(n) {
+    cur = Math.max(0, Math.min(TOTAL - 1, n));
+    track.style.transform = 'translateX(-' + (cur * 100) + '%)';
+    slideNo.textContent = (cur + 1) + ' / ' + TOTAL;
+    var dots = dotsEl.querySelectorAll('.dot');
+    for (var i = 0; i < dots.length; i++) dots[i].classList.toggle('on', i === cur);
+    prev.classList.toggle('disabled', cur === 0);
+    next.classList.toggle('disabled', cur === TOTAL - 1);
+  }
+
+  prev.addEventListener('click', function() { go(cur - 1) });
+  next.addEventListener('click', function() { go(cur + 1) });
+  dotsEl.addEventListener('click', function(e) {
+    var b = e.target.closest('.dot');
+    if (b) go(parseInt(b.dataset.i, 10));
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); go(cur + 1) }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); go(cur - 1) }
+  });
+
+  var sx = 0;
+  var deck = document.querySelector('.deck');
+  deck.addEventListener('touchstart', function(e) { sx = e.touches[0].clientX }, { passive: true });
+  deck.addEventListener('touchend', function(e) {
+    var dx = e.changedTouches[0].clientX - sx;
+    if (Math.abs(dx) > 48) go(dx < 0 ? cur + 1 : cur - 1);
+  }, { passive: true });
+
+  go(0);
+})();
+</script>
 </body>
 </html>

@@ -185,7 +185,7 @@ def _context_blocks(context, zone):
 
     acts = ps.get('activities') or []
     blocks['PC_BARS'] = _bar_chart(
-        [(a['name'], a.get('minutes', 0), a.get('share', 0)) for a in acts], 'min'
+        [(a['name'], a.get('minutes', 0), a.get('share', 0)) for a in acts], 'min', max_items=5
     )
 
     # ── IPHONE ─────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ def _context_blocks(context, zone):
 
     apps = ips.get('apps') or []
     blocks['IPHONE_BARS'] = _bar_chart(
-        [(a.get('app', '?'), a.get('minutes', 0), a.get('share', 0)) for a in apps], 'min'
+        [(a.get('app', '?'), a.get('minutes', 0), a.get('share', 0)) for a in apps], 'min', max_items=5
     )
 
     # ── WEIGHT ─────────────────────────────────────────────────────────────
