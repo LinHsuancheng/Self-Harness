@@ -20,7 +20,7 @@
 | sources.pc_screen_time | 浏览器与活动展示参数 |
 | sources.todo | 缓存路径、client_id、authority、Graph 地址 |
 | activitywatch | 来源 URL、回看小时数、上传 URL |
-| schedule | 入库、Todo、PC 的运行秒数 |
+| schedule | 入库与 Todo 的运行秒数 |
 | schedule.report_time | 服务器日报触发时间（HH:MM，使用 timezone） |
 
 服务可用 SELF_HARNESS_CONFIG 指定配置路径，CLI 使用 --config。凭据存放于配置指定的位置，Git 提交遵循项目 .gitignore。

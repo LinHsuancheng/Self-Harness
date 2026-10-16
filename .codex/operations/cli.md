@@ -7,7 +7,7 @@
 .venv/bin/python interface.py status
 
 # PC 原始采集与上传
-.venv/bin/python collect_activitywatch.py --config config.json
+.venv/bin/python ../automations/collect_activitywatch.py --config config.json
 
 # 月度五来源材料
 .venv/bin/python interface.py context --level month --date 2026-10-13

@@ -3,7 +3,8 @@
 | 文件 | 职责 |
 | --- | --- |
 | server.py | 上传接收、分类、gzip 归档与接收信息 |
-| collect_activitywatch.py | PC 采集上传入口 |
+| ../automations/collect_activitywatch.py | PC 采集上传自动化脚本（项目外） |
+| ../automations/install_activitywatch_task.ps1 | 注册 Windows 每小时任务（项目外） |
 | interface.py | 获取、入库、查询与周期统计 CLI |
 | core/run.py | 获取周期材料、调用 DeepSeek、校验结构化报告并生成 HTML |
 | core/mail.py | 通过 Gmail OAuth 投递已保存的 HTML 报告 |

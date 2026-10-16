@@ -1,6 +1,6 @@
 # PC ActivityWatch
 
-本地 fetcher 从配置的 ActivityWatch 地址读取 AFK、窗口、浏览器三个事件流。collect_activitywatch.py 保存 gzip JSON 并以 `type=pc_screen_time` 上传。
+`../automations/collect_activitywatch.py` 从配置的 ActivityWatch 地址读取 AFK、窗口、浏览器三个事件流，保存 gzip JSON 并以 `type=pc_screen_time` 上传。
 
 | 事件流 | 主要字段 |
 | --- | --- |
