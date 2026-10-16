@@ -1,36 +1,168 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{TITLE}}</title>
-  <style>
-    :root { color-scheme: light; font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; color: #25312e; background: #f5f6f2; }
-    * { box-sizing: border-box; }
-    body { margin: 0; line-height: 1.75; }
-    main { width: min(100% - 2rem, 900px); margin: 3rem auto 5rem; }
-    header { padding: 2.5rem; background: #e9efe8; border-radius: 1rem; }
-    .eyebrow { margin: 0 0 .5rem; font-size: .85rem; letter-spacing: .12em; color: #496b5d; }
-    h1 { margin: 0 0 .5rem; font: 600 clamp(2rem, 5vw, 3.5rem)/1.2 Georgia, "Noto Serif SC", serif; }
-    .period { margin: 0; color: #50645b; }
-    section { margin-top: 1rem; padding: 1.5rem 2rem; background: white; border: 1px solid #e1e6df; border-radius: .8rem; }
-    h2 { margin: 0 0 .75rem; font-size: 1.15rem; color: #315b4a; }
-    p { margin: 0; }
-    ul { margin: 0; padding-left: 1.4rem; }
-    li + li { margin-top: .65rem; }
-    li strong { color: #315b4a; }
-    li span { color: #63746b; }
-    @media (max-width: 600px) { main { width: min(100% - 1rem, 900px); margin: .5rem auto 2rem; } header, section { padding: 1.25rem; } }
-    @media print { :root { background: white; } body { color: black; } main { width: 100%; margin: 0; } header, section { break-inside: avoid; border-color: #bbb; background: white; } }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400&family=Jost:wght@300;400&family=JetBrains+Mono:wght@300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #192b1b;
+  --bg2:     #1e3220;
+  --fg:      #d4cfbf;
+  --fg2:     #a09b8c;
+  --accent:  #c8524a;
+  --line:    rgba(212,207,191,.12);
+  --tag-bg:  rgba(200,82,74,.08);
+  --tag-bd:  rgba(200,82,74,.35);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:'Jost',sans-serif;font-weight:300;font-size:15px;line-height:1.65}
+a{color:var(--accent);text-decoration:none}
+
+.page{max-width:680px;margin:0 auto;padding:48px 24px 80px}
+
+/* ── header ─────────────────────────────────────────────────────── */
+.hdr{padding:40px 0 32px;border-bottom:1px solid var(--line)}
+.hdr-label{font-family:'JetBrains Mono',monospace;font-weight:300;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.hdr-title{font-family:'Playfair Display',serif;font-size:clamp(28px,5vw,38px);font-weight:400;line-height:1.2;margin-bottom:16px}
+.hdr-summary{font-size:14px;color:var(--fg2);line-height:1.7}
+
+/* ── section ─────────────────────────────────────────────────────── */
+.sec{padding:36px 0;border-bottom:1px solid var(--line)}
+.sec-kicker{font-family:'JetBrains Mono',monospace;font-weight:300;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:20px;position:relative;padding-bottom:10px}
+.sec-kicker::after{content:'';position:absolute;bottom:0;left:0;width:32px;height:1px;background:var(--accent)}
+.sec-insight{font-size:13.5px;color:var(--fg2);line-height:1.7;margin-top:20px}
+
+/* ── stat-big ────────────────────────────────────────────────────── */
+.stat-row{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+.stat-big{font-family:'Playfair Display',serif;font-size:52px;font-weight:400;color:var(--accent);line-height:1}
+.stat-unit{font-family:'Jost',sans-serif;font-size:16px;color:var(--fg2)}
+.stat-change{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--fg2);margin-bottom:20px}
+
+/* ── bar chart ───────────────────────────────────────────────────── */
+.bars{margin-top:4px}
+.bar-row{display:grid;grid-template-columns:160px 1fr 52px 34px;align-items:center;gap:8px;padding:4px 0}
+.bar-name{font-size:13px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{background:rgba(212,207,191,.08);border-radius:2px;height:6px;overflow:hidden}
+.bar-fill{height:100%;background:var(--accent);border-radius:2px;opacity:.75}
+.bar-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fg);text-align:right}
+.bar-pct{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fg2);text-align:right}
+
+/* ── session tags ────────────────────────────────────────────────── */
+.sessions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.session-tag{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--tag-bg);border:1px solid var(--tag-bd);border-radius:3px;padding:3px 9px;color:var(--fg)}
+
+/* ── sub-kicker for stages ───────────────────────────────────────── */
+.sub-kicker{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg2);margin-bottom:10px;margin-top:20px}
+
+/* ── weight ──────────────────────────────────────────────────────── */
+.weight-range{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--fg2);margin-top:4px}
+
+/* ── todo counts ─────────────────────────────────────────────────── */
+.todo-counts{display:flex;gap:24px;margin-bottom:20px;flex-wrap:wrap}
+.todo-counts .cnt{text-align:center}
+.todo-counts .cnt-num{font-family:'Playfair Display',serif;font-size:32px;color:var(--accent);display:block;line-height:1}
+.todo-counts .cnt-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg2);margin-top:4px;display:block}
+.todo-tasks{margin-top:16px}
+.task-item{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}
+.task-dash{color:var(--accent);flex-shrink:0}
+.task-name{font-size:13.5px;color:var(--fg)}
+
+/* ── changes & recommendations ───────────────────────────────────── */
+.change-item,.rec-item{padding:14px 0;border-bottom:1px solid var(--line)}
+.change-area,.rec-action{font-size:14px;color:var(--fg);margin-bottom:4px;font-weight:400}
+.change-obs,.rec-reason{font-size:13px;color:var(--fg2);line-height:1.6}
+.change-trend{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);margin-top:4px}
+
+/* ── footer ──────────────────────────────────────────────────────── */
+.footer{padding-top:40px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fg2);text-align:center;letter-spacing:.06em}
+
+.empty{font-size:13px;color:var(--fg2);font-style:italic}
+</style>
 </head>
 <body>
-  <main>
-    <header><p class="eyebrow">SELF HARNESS · 周期回顾</p><h1>{{TITLE}}</h1><p class="period">{{PERIOD_LABEL}}</p></header>
-    <section aria-labelledby="summary"><h2 id="summary">这段时间</h2><p>{{SUMMARY}}</p></section>
-    <section aria-labelledby="observations"><h2 id="observations">分领域观察</h2><ul>{{OBSERVATIONS}}</ul></section>
-    <section aria-labelledby="changes"><h2 id="changes">值得关注的变化</h2><ul>{{CHANGES}}</ul></section>
-    <section aria-labelledby="recommendations"><h2 id="recommendations">下一步的小调整</h2><ul>{{RECOMMENDATIONS}}</ul></section>
-  </main>
+<div class="page">
+
+  <!-- header -->
+  <header class="hdr">
+    <p class="hdr-label">{{PERIOD_LABEL}}</p>
+    <h1 class="hdr-title">{{TITLE}}</h1>
+    <p class="hdr-summary">{{SUMMARY}}</p>
+  </header>
+
+  <!-- 01 sleep -->
+  <section class="sec">
+    <p class="sec-kicker">01 · 睡眠</p>
+    <div class="stat-row">
+      <span class="stat-big">{{SLEEP_STAT}}</span>
+    </div>
+    <p class="stat-change">{{SLEEP_CHANGE}}</p>
+    <div class="sessions">{{SLEEP_SESSIONS}}</div>
+    <p class="sub-kicker">睡眠阶段</p>
+    <div class="bars">{{SLEEP_STAGES}}</div>
+    <p class="sec-insight">{{INSIGHT_SLEEP}}</p>
+  </section>
+
+  <!-- 02 PC usage -->
+  <section class="sec">
+    <p class="sec-kicker">02 · PC 使用</p>
+    <div class="stat-row">
+      <span class="stat-big">{{PC_STAT}}</span>
+      <span class="stat-unit">min · {{PC_HOURS}}</span>
+    </div>
+    <p class="stat-change">{{PC_CHANGE}}</p>
+    <div class="bars">{{PC_BARS}}</div>
+    <p class="sec-insight">{{INSIGHT_PC}}</p>
+  </section>
+
+  <!-- 03 iPhone usage -->
+  <section class="sec">
+    <p class="sec-kicker">03 · iPhone 使用</p>
+    <div class="stat-row">
+      <span class="stat-big">{{IPHONE_STAT}}</span>
+      <span class="stat-unit">min · {{IPHONE_HOURS}}</span>
+    </div>
+    <p class="stat-change">{{IPHONE_CHANGE}}</p>
+    <div class="bars">{{IPHONE_BARS}}</div>
+    <p class="sec-insight">{{INSIGHT_IPHONE}}</p>
+  </section>
+
+  <!-- 04 weight -->
+  <section class="sec">
+    <p class="sec-kicker">04 · 体重</p>
+    <div class="stat-row">
+      <span class="stat-big">{{WEIGHT_STAT}}</span>
+      <span class="stat-unit">kg</span>
+    </div>
+    <p class="stat-change">{{WEIGHT_CHANGE}}</p>
+    <p class="weight-range">{{WEIGHT_RANGE}}</p>
+    <p class="sec-insight">{{INSIGHT_WEIGHT}}</p>
+  </section>
+
+  <!-- 05 tasks -->
+  <section class="sec">
+    <p class="sec-kicker">05 · 任务</p>
+    <div class="todo-counts">
+      <div class="cnt"><span class="cnt-num">{{TODO_COMPLETED_COUNT}}</span><span class="cnt-label">完成</span></div>
+      <div class="cnt"><span class="cnt-num">{{TODO_PENDING_COUNT}}</span><span class="cnt-label">待办</span></div>
+      <div class="cnt"><span class="cnt-num">{{TODO_APPEARED_COUNT}}</span><span class="cnt-label">新增</span></div>
+      <div class="cnt"><span class="cnt-num">{{TODO_STALLED_COUNT}}</span><span class="cnt-label">滞留</span></div>
+    </div>
+    <div class="todo-tasks">{{TODO_COMPLETED}}</div>
+    <p class="sec-insight">{{INSIGHT_TASKS}}</p>
+  </section>
+
+  <!-- 06 changes & recommendations -->
+  <section class="sec">
+    <p class="sec-kicker">06 · 变化与建议</p>
+    <div class="changes">{{CHANGES}}</div>
+    <div class="recs" style="margin-top:24px">{{RECOMMENDATIONS}}</div>
+  </section>
+
+  <footer class="footer">Self Harness · 自动生成</footer>
+
+</div>
 </body>
 </html>

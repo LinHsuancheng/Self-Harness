@@ -29,7 +29,7 @@ PROMPTS = {
     "year": "year.md",
 }
 FIELDS = ("title", "period_label", "summary", "observations", "changes", "recommendations")
-OBSERVATION_FIELDS = ("sleep", "weight", "tasks", "device_usage")
+OBSERVATION_FIELDS = ("sleep", "weight", "tasks", "pc_usage", "iphone_usage")
 CHANGE_FIELDS = ("area", "observation", "trend")
 RECOMMENDATION_FIELDS = ("action", "reason")
 SCHEMA = {
@@ -69,11 +69,14 @@ SCHEMA = {
 }
 def _change_items(changes):
     if not changes:
-        return "<li>本期没有足够可比数据，暂无明确变化。</li>"
+        return '<p class="empty">本期无明确变化。</p>'
     return "".join(
-        "<li><strong>{}</strong>：{} <span>{}</span></li>".format(
-            escape(item["area"], quote=True), escape(item["observation"], quote=True),
-            escape(item["trend"], quote=True),
+        '<div class="change-item">'
+        '<p class="change-area">{}</p>'
+        '<p class="change-obs">{}</p>'
+        '<p class="change-trend">{}</p>'
+        '</div>'.format(
+            escape(item["area"]), escape(item["observation"]), escape(item["trend"]),
         )
         for item in changes
     )
@@ -81,36 +84,209 @@ def _change_items(changes):
 
 def _recommendation_items(recommendations):
     if not recommendations:
-        return "<li>本期暂无需要尝试的调整。</li>"
+        return '<p class="empty">本期暂无建议调整。</p>'
     return "".join(
-        "<li>{} <span>{}</span></li>".format(
-            escape(item["action"], quote=True), escape(item["reason"], quote=True),
+        '<div class="rec-item">'
+        '<p class="rec-action">{}</p>'
+        '<p class="rec-reason">{}</p>'
+        '</div>'.format(
+            escape(item["action"]), escape(item["reason"]),
         )
         for item in recommendations
     )
 
 
-def _observation_items(observations):
-    labels = {"sleep": "睡眠", "weight": "体重", "tasks": "任务", "device_usage": "设备使用"}
-    return "".join(
-        "<li><strong>{}</strong>：{}</li>".format(
-            labels[field], escape(observations[field], quote=True),
-        )
-        for field in OBSERVATION_FIELDS
+def _context_blocks(context, zone):
+    """Generate HTML data visualization blocks from raw interface context."""
+
+    def _local(iso):
+        try:
+            return datetime.fromisoformat(iso).astimezone(ZoneInfo(zone)).strftime('%H:%M')
+        except Exception:
+            return iso[:5] if iso else "—"
+
+    def _bar_chart(items, unit, max_items=8):
+        items = [(n, v, s) for n, v, s in items if v and v > 0][:max_items]
+        if not items:
+            return '<p class="empty">无数据</p>'
+        max_s = max(s for _, _, s in items) or 1
+        rows = []
+        for name, value, share in items:
+            pct = share / max_s * 100
+            rows.append(
+                f'<div class="bar-row">'
+                f'<span class="bar-name">{escape(str(name))}</span>'
+                f'<div class="bar-track"><div class="bar-fill" style="width:{pct:.1f}%"></div></div>'
+                f'<span class="bar-val">{value:.0f}{unit}</span>'
+                f'<span class="bar-pct">{share*100:.0f}%</span>'
+                f'</div>'
+            )
+        return '\n'.join(rows)
+
+    blocks: dict = {}
+
+    # ── SLEEP ──────────────────────────────────────────────────────────────
+    sl = context.get('sleep', {})
+    ss = sl.get('summary', {})
+    sc = sl.get('comparison', {}).get('metrics', {})
+
+    hours = ss.get('daily_average_hours')
+    blocks['SLEEP_STAT'] = f"{hours:.1f} h" if hours is not None else "—"
+
+    prev = sc.get('daily_average_hours', {}).get('previous')
+    chg  = sc.get('daily_average_hours', {}).get('change')
+    if chg is not None and prev is not None:
+        sign = "↑" if chg > 0 else "↓"
+        blocks['SLEEP_CHANGE'] = f"{sign} {abs(chg):.1f}h  ·  前日 {prev:.1f}h"
+    else:
+        blocks['SLEEP_CHANGE'] = "无前日对比"
+
+    stages = ss.get('stages') or []
+    total_h = sum(st.get('hours', 0) for st in stages) or 1
+    stage_items = [
+        (st['stage'], st.get('hours', 0), st.get('hours', 0) / total_h)
+        for st in stages if st.get('hours', 0) > 0
+    ]
+    blocks['SLEEP_STAGES'] = _bar_chart(stage_items, 'h', max_items=6)
+
+    sessions = ss.get('sessions') or []
+    if sessions:
+        tags = []
+        for s in sessions:
+            st_t = _local(s.get('start', ''))
+            en_t = _local(s.get('end', ''))
+            sh = s.get('sleep_hours', 0)
+            tags.append(f'<span class="session-tag">{st_t}–{en_t} · {sh:.1f}h</span>')
+        blocks['SLEEP_SESSIONS'] = '\n'.join(tags)
+    else:
+        blocks['SLEEP_SESSIONS'] = '<span class="empty">无记录</span>'
+
+    # ── PC ─────────────────────────────────────────────────────────────────
+    pc  = context.get('pc_screen_time', {})
+    ps  = pc.get('summary', {})
+    pcc = pc.get('comparison', {}).get('metrics', {})
+
+    pc_min = ps.get('daily_average_minutes')
+    if pc_min is not None:
+        h, m = int(pc_min // 60), int(pc_min % 60)
+        blocks['PC_STAT']  = f"{pc_min:.0f}"
+        blocks['PC_HOURS'] = f"{h}h {m}min" if h else f"{m}min"
+    else:
+        blocks['PC_STAT']  = "—"
+        blocks['PC_HOURS'] = ""
+
+    pc_chg  = pcc.get('daily_average_minutes', {}).get('change')
+    pc_prev = pcc.get('daily_average_minutes', {}).get('previous')
+    if pc_chg is not None and pc_prev is not None:
+        sign = "↑" if pc_chg > 0 else "↓"
+        blocks['PC_CHANGE'] = f"{sign} {abs(pc_chg):.0f}min  ·  前日 {pc_prev:.0f}min"
+    else:
+        blocks['PC_CHANGE'] = ""
+
+    acts = ps.get('activities') or []
+    blocks['PC_BARS'] = _bar_chart(
+        [(a['name'], a.get('minutes', 0), a.get('share', 0)) for a in acts], 'min'
     )
 
+    # ── IPHONE ─────────────────────────────────────────────────────────────
+    ip  = context.get('iphone_screen_time', {})
+    ips = ip.get('summary', {})
+    ipc = ip.get('comparison', {}).get('metrics', {})
 
-def _render(result):
+    ip_min = ips.get('daily_average_minutes')
+    if ip_min is not None:
+        h, m = int(ip_min // 60), int(ip_min % 60)
+        blocks['IPHONE_STAT']  = f"{ip_min:.0f}"
+        blocks['IPHONE_HOURS'] = f"{h}h {m}min" if h else f"{m}min"
+    else:
+        blocks['IPHONE_STAT']  = "—"
+        blocks['IPHONE_HOURS'] = ""
+
+    ip_chg  = ipc.get('daily_average_minutes', {}).get('change')
+    ip_prev = ipc.get('daily_average_minutes', {}).get('previous')
+    if ip_chg is not None and ip_prev is not None:
+        sign = "↑" if ip_chg > 0 else "↓"
+        blocks['IPHONE_CHANGE'] = f"{sign} {abs(ip_chg):.0f}min  ·  前日 {ip_prev:.0f}min"
+    else:
+        blocks['IPHONE_CHANGE'] = ""
+
+    apps = ips.get('apps') or []
+    blocks['IPHONE_BARS'] = _bar_chart(
+        [(a.get('app', '?'), a.get('minutes', 0), a.get('share', 0)) for a in apps], 'min'
+    )
+
+    # ── WEIGHT ─────────────────────────────────────────────────────────────
+    wt  = context.get('weight', {})
+    ws  = wt.get('summary', {})
+    wtc = wt.get('comparison', {}).get('metrics', {})
+
+    mean = ws.get('mean')
+    unit = ws.get('unit') or 'kg'
+    blocks['WEIGHT_STAT'] = f"{mean:.1f}" if mean is not None else "—"
+
+    wt_chg = wtc.get('mean', {}).get('change')
+    if wt_chg is not None:
+        sign = "↑" if wt_chg > 0 else "↓"
+        blocks['WEIGHT_CHANGE'] = f"{sign} {abs(wt_chg):.2f} {unit}"
+    else:
+        blocks['WEIGHT_CHANGE'] = "无前日对比" if mean is not None else ""
+
+    mn, mx = ws.get('min'), ws.get('max')
+    if mn is not None and mx is not None and mn != mx:
+        blocks['WEIGHT_RANGE'] = f"范围 {mn:.1f} – {mx:.1f} {unit}"
+    else:
+        blocks['WEIGHT_RANGE'] = unit if mean is not None else "今日无记录"
+
+    # ── TODO ───────────────────────────────────────────────────────────────
+    td = context.get('todo', {})
+    ts = td.get('summary', {})
+
+    completed_count = ts.get('completed_count') or 0
+    pending_count   = ts.get('pending_count') or 0
+    appeared_count  = ts.get('appeared_count') or 0
+    initial_pending = ts.get('initial_pending_count')
+    stalled = (initial_pending - completed_count) if initial_pending is not None else None
+
+    blocks['TODO_COMPLETED_COUNT'] = str(completed_count)
+    blocks['TODO_PENDING_COUNT']   = str(pending_count)
+    blocks['TODO_APPEARED_COUNT']  = f"+{appeared_count}" if appeared_count else "0"
+    blocks['TODO_STALLED_COUNT']   = str(stalled) if stalled is not None else "—"
+
+    completed_tasks = ts.get('completed_tasks') or []
+    if completed_tasks:
+        rows = []
+        for task in completed_tasks[:20]:
+            title = task.get('title') or '未命名任务'
+            rows.append(
+                f'<div class="task-item">'
+                f'<span class="task-dash">—</span>'
+                f'<span class="task-name">{escape(title)}</span>'
+                f'</div>'
+            )
+        blocks['TODO_COMPLETED'] = '\n'.join(rows)
+    else:
+        blocks['TODO_COMPLETED'] = '<p class="empty">今日无完成任务</p>'
+
+    return blocks
+
+
+def _render(result, context, zone):
     template = (HERE / "templates" / "report.html").read_text(encoding="utf-8")
-    values = {
-        "TITLE": escape(result["title"], quote=True),
-        "PERIOD_LABEL": escape(result["period_label"], quote=True),
-        "SUMMARY": escape(result["summary"], quote=True),
-        "OBSERVATIONS": _observation_items(result["observations"]),
-        "CHANGES": _change_items(result["changes"]),
+    obs = result["observations"]
+    values: dict = {
+        "TITLE":          escape(result["title"]),
+        "PERIOD_LABEL":   escape(result["period_label"]),
+        "SUMMARY":        escape(result["summary"]),
+        "INSIGHT_SLEEP":  escape(obs["sleep"]),
+        "INSIGHT_WEIGHT": escape(obs["weight"]),
+        "INSIGHT_TASKS":  escape(obs["tasks"]),
+        "INSIGHT_PC":     escape(obs["pc_usage"]),
+        "INSIGHT_IPHONE": escape(obs["iphone_usage"]),
+        "CHANGES":        _change_items(result["changes"]),
         "RECOMMENDATIONS": _recommendation_items(result["recommendations"]),
     }
-    return re.sub(r"\{\{([A-Z_]+)\}\}", lambda match: values[match.group(1)], template)
+    values.update(_context_blocks(context, zone))
+    return re.sub(r"\{\{([A-Z_]+)\}\}", lambda m: values.get(m.group(1), ""), template)
 
 
 def _validated_output(response):
@@ -180,7 +356,7 @@ def run(config_path, level, date) -> Path:
     except Exception as exc:
         raise RuntimeError(f"DeepSeek 报告生成失败：{str(exc).replace(key, '[REDACTED]')}") from exc
 
-    html = _render(result)
+    html = _render(result, context, config.get('timezone', 'UTC'))
     reports_dir = Path(config.get("reports_dir", "./reports"))
     if not reports_dir.is_absolute():
         reports_dir = config_path.parent / reports_dir
