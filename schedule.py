@@ -1,4 +1,4 @@
-"""Generate/install native systemd timers from configuration."""
+"""Generate/install native systemd units from configuration."""
 import argparse
 import json
 import re
@@ -18,6 +18,33 @@ config_path=Path(args.config).resolve()
 config=load_config(config_path)
 project=Path(__file__).resolve().parent
 unit_dir=Path('/etc/systemd/system')
+
+# --- collector service (persistent, not a timer) ---
+if not args.report_only:
+    collector_command=f'{json.dumps(sys.executable)} {json.dumps(str(project/"server.py"))}'
+    collector_service=f'''[Unit]
+Description=Self Harness raw material collector
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={project}
+Environment=SELF_HARNESS_CONFIG={config_path}
+ExecStart={collector_command}
+Restart=on-failure
+RestartSec=3
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
+'''
+    if args.install:
+        unit_dir.mkdir(parents=True,exist_ok=True)
+        (unit_dir/'self-harness-collector.service').write_text(collector_service)
+    else:
+        print('self-harness-collector.service\n'+collector_service)
+
+# --- periodic timers ---
 if args.report_only:
     jobs=[]
 else:
@@ -56,7 +83,9 @@ WantedBy={'timers.target'}
     else:
         print(unit+'.service\n'+service+'\n'+unit+'.timer\n'+timer)
     units.append(unit+'.timer')
-report_time=config.get('schedule',{}).get('report_time','06:00')
+
+# --- daily report timer ---
+report_time=config.get('schedule',{}).get('report_time','09:05')
 if not isinstance(report_time,str) or not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d',report_time):
     raise ValueError('schedule.report_time must use HH:MM')
 timezone=config.get('timezone','UTC')
@@ -93,8 +122,10 @@ if args.install:
 else:
     print(unit+'.service\n'+service+'\n'+unit+'.timer\n'+timer)
 units.append(unit+'.timer')
+
 if args.install:
-    command=['systemctl']
-    subprocess.run(command+['daemon-reload'],check=True)
-    subprocess.run(command+['enable','--now']+units,check=True)
-    print('Installed: '+', '.join(units))
+    subprocess.run(['systemctl','daemon-reload'],check=True)
+    subprocess.run(['systemctl','enable','--now']+units,check=True)
+    # collector is a service, not a timer — enable separately if newly written
+    subprocess.run(['systemctl','enable','self-harness-collector.service'],check=True)
+    print('Installed: '+', '.join(units)+', self-harness-collector.service')

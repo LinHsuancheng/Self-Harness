@@ -1,15 +1,5 @@
-[Unit]
-Description=Self Harness raw material collector
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/root/test-server
-Environment=SELF_HARNESS_CONFIG=/root/test-server/config.json
-ExecStart=/root/test-server/.venv/bin/python /root/test-server/server.py
-Restart=on-failure
-RestartSec=3
-UMask=0077
-
-[Install]
-WantedBy=multi-user.target
+# This file is kept as a reference only.
+# The actual unit is generated and installed by schedule.py, which fills in
+# the correct project path, Python executable and config path automatically.
+#
+#   .venv/bin/python schedule.py --role server --install
