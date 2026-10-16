@@ -20,8 +20,8 @@ def shift_month(value, count):
     return value.replace(year=year,month=month,day=min(value.day,calendar.monthrange(year,month)[1]))
 
 
-def bounds(level, anchor, zone):
-    start=local(anchor,zone).replace(hour=0,minute=0,second=0,microsecond=0)
+def bounds(level, anchor, zone, day_start_hour=0):
+    start=local(anchor,zone).replace(hour=day_start_hour,minute=0,second=0,microsecond=0)
     if level=='day':end=start+timedelta(days=1)
     elif level=='week':
         start-=timedelta(days=start.weekday());end=start+timedelta(days=7)
@@ -41,22 +41,22 @@ def previous(start, end, level, zone):
     return (start-delta).isoformat(),start.isoformat()
 
 
-def buckets(start, end, level, zone):
+def buckets(start, end, level, zone, day_start_hour=0):
     current,upper=local(start,zone),local(end,zone)
     result=[]
     while current<upper:
-        midnight=current.replace(hour=0,minute=0,second=0,microsecond=0)
-        if level in ('day','week'):following=midnight+timedelta(days=1)
-        elif level=='month':following=midnight+timedelta(days=7-midnight.weekday())
-        else:following=shift_month(midnight.replace(day=1),1)
+        day_start=current.replace(hour=day_start_hour,minute=0,second=0,microsecond=0)
+        if level in ('day','week'):following=day_start+timedelta(days=1)
+        elif level=='month':following=day_start+timedelta(days=7-day_start.weekday())
+        else:following=shift_month(day_start.replace(day=1),1)
         following=min(following,upper)
         result.append((current.isoformat(),following.isoformat()))
         current=following
     return result
 
 
-def days(start,end,zone):
-    return buckets(start,end,'week',zone)
+def days(start,end,zone,day_start_hour=0):
+    return buckets(start,end,'week',zone,day_start_hour)
 
 
 def seconds(start,end):

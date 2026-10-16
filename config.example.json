@@ -1,6 +1,7 @@
 {
   "data_dir": "./raw",
   "timezone": "Asia/Singapore",
+  "day_start_hour": 9,
   "max_upload_bytes": 10485760,
   "listen": {
     "host": "0.0.0.0",
@@ -63,6 +64,6 @@
   "schedule": {
     "ingest_seconds": 60,
     "todo_seconds": 3600,
-    "report_time": "06:00"
+    "report_time": "09:05"
   }
 }

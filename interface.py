@@ -41,7 +41,7 @@ def main():
     args = parser.parse_args(); config=load_config(args.config)
     if args.command in ('query','summarize','context','todo-changes','pc-active-time'):
         if getattr(args,'date',None):
-            args.start,args.end=periods.bounds(args.level,args.date,config.get('timezone','UTC'))
+            args.start,args.end=periods.bounds(args.level,args.date,config.get('timezone','UTC'),config.get('day_start_hour',0))
         if not args.start or not args.end:
             parser.error('Provide --start and --end, or --date for a calendar report')
     failed=False

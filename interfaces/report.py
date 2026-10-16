@@ -53,8 +53,8 @@ def coverage(source, rows, start, end):
     return []
 
 
-def quality(source, rows, start, end, zone, completed=()):
-    daily=periods.days(start,end,zone)
+def quality(source, rows, start, end, zone, completed=(), day_start_hour=0):
+    daily=periods.days(start,end,zone,day_start_hour)
     intervals=coverage(source,rows,start,end)
     observed={periods.local(r['observed_at'],zone).date().isoformat() for r in rows} if source not in ('sleep','pc_screen_time') else set()
     observed.update(periods.local(c['completed_at'],zone).date().isoformat() for c in completed)
@@ -132,7 +132,7 @@ def calculate(config,source,rows,start,end,sessions=()):
         for task in result['completed_tasks']:groups[task['list_id']]+=1
         names={l['list']['id']:l['list'].get('displayName',l['list']['id']) for r in rows for l in r['data']['lists']}
         result['completed_by_list']=[{'list_id':name,'list_name':names[name],'count':count,'share':round(count/result['completed_count'],4)} for name,count in sorted(groups.items())]
-    q=quality(source,selected,start,end,zone,result.get('completed_tasks',()))
+    q=quality(source,selected,start,end,zone,result.get('completed_tasks',()),config.get('day_start_hour',0))
     if source=='todo':q['completion_count']=len(result['completed_tasks'])
     if source=='sleep':
         dates=sorted({periods.local(s['end'],zone).date().isoformat() for s in owned})
@@ -221,6 +221,7 @@ def comparison(source,current,prior,quality_current,quality_prior,start,end):
 
 def report(config,source,start,end,level):
     zone=config.get('timezone','UTC')
+    day_start_hour=config.get('day_start_hour',0)
     start,end=periods.local(start,zone).isoformat(),periods.local(end,zone).isoformat()
     if time(start)>=time(end):raise ValueError('Start must precede end')
     prior_start,prior_end=periods.previous(start,end,level,zone)
@@ -231,7 +232,7 @@ def report(config,source,start,end,level):
     current,q=compute(start,end)
     prior,pq=compute(prior_start,prior_end)
     trend=[]
-    for a,b in periods.buckets(start,end,level,zone):
+    for a,b in periods.buckets(start,end,level,zone,day_start_hour):
         item,iq=compute(a,b)
         compact={k:v for k,v in item.items() if not isinstance(v,list)}
         trend.append({'period':{'start':a,'end':b},'summary':compact,'data_quality':iq})
