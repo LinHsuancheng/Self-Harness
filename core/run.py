@@ -342,19 +342,25 @@ def run(config_path, level, date) -> Path:
     key = os.getenv("DEEPSEEK_API_KEY")
     if not key:
         raise ValueError("缺少 DEEPSEEK_API_KEY；请在仓库根目录 .env 中配置")
-    try:
-        response = OpenAI(
-            api_key=key,
-            base_url=os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com",
-        ).responses.create(
-            model=os.getenv("DEEPSEEK_MODEL") or "deepseek-flash",
-            instructions=(HERE / "prompts" / PROMPTS[level]).read_text(encoding="utf-8"),
-            input=json.dumps(context, ensure_ascii=False),
-            text={"format": {"type": "json_schema", "name": "self_harness_report", "strict": True, "schema": SCHEMA}},
-        )
-        result = _validated_output(response)
-    except Exception as exc:
-        raise RuntimeError(f"DeepSeek 报告生成失败：{str(exc).replace(key, '[REDACTED]')}") from exc
+    client = OpenAI(
+        api_key=key,
+        base_url=os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com",
+    )
+    call_kwargs = dict(
+        model=os.getenv("DEEPSEEK_MODEL") or "deepseek-flash",
+        instructions=(HERE / "prompts" / PROMPTS[level]).read_text(encoding="utf-8"),
+        input=json.dumps(context, ensure_ascii=False),
+        text={"format": {"type": "json_schema", "name": "self_harness_report", "strict": True, "schema": SCHEMA}},
+    )
+    last_exc = None
+    for attempt in range(3):
+        try:
+            result = _validated_output(client.responses.create(**call_kwargs))
+            break
+        except Exception as exc:
+            last_exc = exc
+    else:
+        raise RuntimeError(f"DeepSeek 报告生成失败（3次重试）：{str(last_exc).replace(key, '[REDACTED]')}") from last_exc
 
     html = _render(result, context, config.get('timezone', 'UTC'))
     reports_dir = Path(config.get("reports_dir", "./reports"))
