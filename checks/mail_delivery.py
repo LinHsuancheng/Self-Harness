@@ -17,9 +17,14 @@ message = mail.compose_message(report, "reader@example.com", "<html><body>Report
 assert isinstance(message, EmailMessage)
 assert message["To"] == "reader@example.com"
 assert message["Subject"] == "Self Harness 报告：week-2026-10-13"
-assert message.get_content_type() == "multipart/alternative"
+assert message.get_content_type() == "multipart/mixed"
 assert "week-2026-10-13.html" in message.get_body(preferencelist=("plain",)).get_content()
-assert "<body>Report</body>" in message.get_body(preferencelist=("html",)).get_content()
+attachments = list(message.iter_attachments())
+assert len(attachments) == 1
+attachment = attachments[0]
+assert attachment.get_filename() == "week-2026-10-13.html"
+assert attachment.get_content_type() == "text/html"
+assert "<body>Report</body>" in attachment.get_content()
 with tempfile.TemporaryDirectory() as directory:
     root = Path(directory)
     token_path = root / "token.json"
@@ -35,7 +40,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert url == mail.SEND_URL and content_type == "application/json"
     raw = json.loads(payload)["raw"]
     decoded = base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4))
-    assert b"reader@example.com" in decoded and b"<body>Report</body>" in decoded
+    assert b"reader@example.com" in decoded and b"week-2026-10-13.html" in decoded
 help_text = subprocess.run(
     [sys.executable, "-m", "core.run", "--help"],
     check=True, capture_output=True, text=True,

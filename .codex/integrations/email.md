@@ -1,6 +1,6 @@
 # 邮件与 Google OAuth
 
-邮件通过 Gmail API `users/me/messages/send` 投递，授权 scope 为 `https://www.googleapis.com/auth/gmail.send`。报告 HTML 是邮件正文，并带有纯文本备用内容。
+邮件通过 Gmail API `users/me/messages/send` 投递，授权 scope 为 `https://www.googleapis.com/auth/gmail.send`。报告 HTML 作为附件（`text/html`）附在邮件中，正文为纯文本提示。
 
 本地授权文件 `/home/victor/codefields/gmail-oauth/token-self-harness.json` 已通过 refresh 验证，文件权限为 `0600`。使用 `config.json` 的 `email.token_file` 指向 token，`email.to` 设置收件人。token 和 OAuth 客户端凭据不得提交 Git 或随普通代码同步。
 

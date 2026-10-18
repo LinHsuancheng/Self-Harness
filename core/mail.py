@@ -21,8 +21,8 @@ def compose_message(report_path, recipient, html):
     message = EmailMessage()
     message["To"] = recipient
     message["Subject"] = f"Self Harness 报告：{path.stem}"
-    message.set_content(f"Self Harness 报告文件：{path.name}。请使用支持 HTML 的邮件客户端查看正文。")
-    message.add_alternative(html,subtype="html")
+    message.set_content(f"Self Harness 报告文件：{path.name}。请查收附件。")
+    message.add_attachment(html, subtype="html", filename=path.name)
     return message
 
 
