@@ -314,7 +314,7 @@ def _context_blocks(context, zone):
             )
         blocks['TODO_COMPLETED'] = '\n'.join(rows)
     else:
-        blocks['TODO_COMPLETED'] = '<p class="empty">今日无完成任务</p>'
+        blocks['TODO_COMPLETED'] = '<p class="empty">本周期无完成任务</p>'
 
     pending_tasks = ts.get('pending_tasks') or []
     if pending_tasks:
@@ -340,7 +340,7 @@ def _context_blocks(context, zone):
             )
         blocks['TODO_PENDING'] = '\n'.join(rows)
     else:
-        blocks['TODO_PENDING'] = '<p class="empty">当前无待办任务</p>'
+        blocks['TODO_PENDING'] = '<p class="empty">本周期无待办任务</p>'
 
     return blocks
 
