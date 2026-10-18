@@ -33,7 +33,11 @@ with tempfile.TemporaryDirectory() as directory:
     for i,observed in enumerate(('2026-10-12T23:00:00+08:00','2026-10-13T20:00:00+08:00')):
         task={'id':'t','title':'Ship operator','status':'notStarted' if i==0 else 'completed'}
         if i:task['completedDateTime']={'dateTime':'2026-10-13T10:00:00.0000000','timeZone':'UTC'}
-        put('todo',str(i)+'.gz',json.dumps({'complete':True,'observed_at':observed,'lists':[{'list':{'id':'l'},'tasks':[{'task':task,'checklist':[]}]}]}))
+        tasks=[{'task':task,'checklist':[]}]
+        if i:
+            tasks.append({'task':{'id':'p','title':'Plan next sprint','status':'notStarted','importance':'high',
+                                  'dueDateTime':{'dateTime':'2026-10-15T00:00:00.0000000','timeZone':'Asia/Singapore'}},'checklist':[]})
+        put('todo',str(i)+'.gz',json.dumps({'complete':True,'observed_at':observed,'lists':[{'list':{'id':'l'},'tasks':tasks}]}))
     for source in config['sources']:ingest(config,source)
     weight=summarize(config,'weight',start,end)['summary']
     assert (weight['min'],weight['max'],weight['mean'])==(77,78,77.5)
@@ -45,7 +49,8 @@ with tempfile.TemporaryDirectory() as directory:
     assert len(pc['activities'])==2 and sum(site['minutes'] for site in pc['activities'])==60
     assert pc['activities'][0]['topics']==['Reading']
     todo=summarize(config,'todo',start,end)['summary']
-    assert todo['completed_count']==1 and todo['pending_count']==0
+    assert todo['completed_count']==1 and todo['pending_count']==1
+    assert todo['pending_tasks']==[{'list_id':'l','list_name':'l','title':'Plan next sprint','status':'notStarted','importance':'high','due':'2026-10-15T00:00:00.0000000'}]
     result=context(config,start,end)
     assert all('summary' in item and 'materials' not in item for item in result.values())
     assert all(len(item['trend'])==1 for item in result.values())
@@ -55,8 +60,8 @@ with tempfile.TemporaryDirectory() as directory:
     ingest(config,'todo')
     later_summary=summarize(config,'todo',start,end)['summary']
     assert later_summary['completed_count']==2
-    assert later_summary['pending_count']==0
-print('PASS: weight range, sleep hours, app distributions, hourly PC usage, completed tasks, compact context')
+    assert later_summary['pending_count']==1
+print('PASS: weight range, sleep hours, app distributions, hourly PC usage, completed & pending tasks, compact context')
 
 from interfaces.summary import activities
 report={'total_minutes':12,'apps':[{'app':'msedge.exe','minutes':10},{'app':'Editor','minutes':1.5},{'app':'Helper','minutes':0.5}],

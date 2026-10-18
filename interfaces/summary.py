@@ -89,7 +89,20 @@ def todo(rows, baseline, start, end, following=None):
     lower,upper=datetime.fromisoformat(start),datetime.fromisoformat(end)
     snapshots=([baseline] if baseline else [])+rows
     last=snapshots[-1] if snapshots else None
-    pending=sum(entry['task'].get('status')!='completed' for lst in last['data']['lists'] for entry in lst['tasks']) if last else 0
+    pending=0
+    pending_tasks=[]
+    if last:
+        for lst in last['data']['lists']:
+            for entry in lst['tasks']:
+                task=entry['task']
+                if task.get('status')=='completed':continue
+                pending+=1
+                pending_tasks.append({'list_id':lst['list']['id'],
+                                      'list_name':lst['list'].get('displayName',lst['list']['id']),
+                                      'title':task.get('title'),
+                                      'status':task.get('status'),
+                                      'importance':task.get('importance'),
+                                      'due':(task.get('dueDateTime') or {}).get('dateTime')})
     snapshots += [following] if following else []
     completed={};appeared=set();disappeared=set();changed=set()
     previous={}
@@ -118,7 +131,7 @@ def todo(rows, baseline, start, end, following=None):
                                 'completed_at':time.isoformat()}
         previous=tasks
     return {'completed_count':len(completed),'completed_tasks':list(completed.values()),
-            'pending_count':pending,
+            'pending_count':pending,'pending_tasks':pending_tasks,
             'appeared_count':len(appeared),'disappeared_count':len(disappeared),'changed_count':len(changed)}
 
 

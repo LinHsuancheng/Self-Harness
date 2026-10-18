@@ -4,7 +4,7 @@ fetcher 通过 MSAL 缓存授权调用 Microsoft Graph，读取列表、任务�
 
 一次采集形成完整 JSON 快照，包含 observed_at、complete 和 lists。缓存授权路径与客户端参数位于 sources.todo。
 
-operator 返回完成数量及任务、列表完成分布、期初期末待办数量，以及出现、消失和变化数量。
+operator 返回完成数量及任务、列表完成分布、期初期末待办数量、待办任务明细（含标题、清单、优先级、状态与截止时间），以及出现、消失和变化数量。
 
 完成统计按 completedDateTime 归属周期，额外读取报告期末之后第一份快照。任务状态变化使用相邻快照比较。
 

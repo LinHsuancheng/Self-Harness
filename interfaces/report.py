@@ -212,7 +212,7 @@ def display(config,source,result,level):
     elif source=='pc_screen_time':
         result.pop('apps',None);result.pop('websites',None);result['activities']=[]
     if level!='day':
-        for key in ('sessions','completed_tasks','daily'):result.pop(key,None)
+        for key in ('sessions','completed_tasks','daily','pending_tasks'):result.pop(key,None)
     return result
 
 

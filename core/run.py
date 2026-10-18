@@ -316,6 +316,32 @@ def _context_blocks(context, zone):
     else:
         blocks['TODO_COMPLETED'] = '<p class="empty">今日无完成任务</p>'
 
+    pending_tasks = ts.get('pending_tasks') or []
+    if pending_tasks:
+        rows = []
+        for task in pending_tasks[:30]:
+            title = escape(task.get('title') or '未命名任务')
+            parts = [escape(task.get('list_name') or '未命名清单')]
+            importance = task.get('importance')
+            if importance:
+                parts.append({'low':'低优先级','normal':'普通','high':'高优先级'}.get(importance, importance))
+            status = task.get('status')
+            if status in ('inProgress','waitingOnOthers','deferred'):
+                parts.append({'inProgress':'进行中','waitingOnOthers':'等待他人','deferred':'已推迟'}[status])
+            due = task.get('due')
+            if due:
+                parts.append('截止 ' + (due[:10] if isinstance(due, str) else str(due)))
+            rows.append(
+                f'<div class="task-item">'
+                f'<span class="task-dash">○</span>'
+                f'<span class="task-name">{title}</span>'
+                f'<span class="source-note"> · {" · ".join(parts)}</span>'
+                f'</div>'
+            )
+        blocks['TODO_PENDING'] = '\n'.join(rows)
+    else:
+        blocks['TODO_PENDING'] = '<p class="empty">当前无待办任务</p>'
+
     return blocks
 
 
