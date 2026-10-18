@@ -38,18 +38,36 @@ def sleep(rows, start, end):
             'stages':[{'stage':stage,'hours':round(hours,3)} for stage,hours in stages.items()]}
 
 
-def iphone(rows, report_timezone):
-    daily={}
-    for row in rows:
-        day=datetime.fromisoformat(row['observed_at']).astimezone(ZoneInfo(report_timezone)).date().isoformat()
-        daily[day]=row
-    totals=defaultdict(float)
-    days=[]
-    for day,row in sorted(daily.items()):
-        apps=row['data']['apps']
-        for app in apps:totals[app['app']]+=app['duration']
-        days.append({'date':day,'minutes':round(sum(a['duration'] for a in apps),3)})
-    return {'total_minutes':round(sum(totals.values()),3),'apps':distribution(totals),'daily':days}
+def iphone(rows, start, end, report_timezone, day_start_hour=9):
+    """Build a logical day from near-boundary and near-midnight cumulative snapshots."""
+    zone=ZoneInfo(report_timezone);lower=datetime.fromisoformat(start).astimezone(zone);upper=datetime.fromisoformat(end).astimezone(zone)
+    snapshots=sorted((datetime.fromisoformat(r['observed_at']).astimezone(zone),r) for r in rows)
+    totals=defaultdict(float);daily=defaultdict(float);reasons=[];coverage_starts=[];coverage_ends=[]
+    cursor=lower
+    while cursor<upper:
+        day=cursor.date()
+        midnight=datetime.combine(day,datetime.min.time(),zone);morning=midnight+timedelta(hours=day_start_hour);night=midnight+timedelta(days=1)
+        next_morning=night+timedelta(hours=day_start_hour)
+        def latest(a,b):
+            found=[x for x in snapshots if a<=x[0]<=b]
+            return found[-1] if found else None
+        base=latest(midnight,morning);end_day=latest(morning,night-timedelta(microseconds=1));end_morning=latest(night,next_morning)
+        label=day.isoformat()
+        for name,value in ((f'D日{day_start_hour:02d}点',base),('D日24点',end_day),(f'D+1日{day_start_hour:02d}点',end_morning)):
+            if value is None:reasons.append(f'{label} 缺少{name}附近快照')
+        if base and end_day:
+            a={x['app']:x['duration'] for x in base[1]['data']['apps']};b={x['app']:x['duration'] for x in end_day[1]['data']['apps']}
+            for app in a.keys()|b.keys():daily[label]+=max(0,b.get(app,0)-a.get(app,0));totals[app]+=max(0,b.get(app,0)-a.get(app,0))
+            coverage_starts.append(base[0]);coverage_ends.append(end_day[0])
+        if end_morning:
+            for item in end_morning[1]['data']['apps']:daily[label]+=max(0,item['duration']);totals[item['app']]+=max(0,item['duration'])
+            coverage_ends.append(end_morning[0])
+        cursor+=timedelta(days=1)
+    days=[{'date':day,'minutes':round(minutes,3)} for day,minutes in sorted(daily.items())]
+    coverage={'estimated':True,'incomplete':bool(reasons),'reason':'；'.join(dict.fromkeys(reasons)) or '使用09点与24点附近快照计算',
+              'covered_from':min(coverage_starts).isoformat() if coverage_starts else None,
+              'covered_to':max(coverage_ends).isoformat() if coverage_ends else None}
+    return {'total_minutes':round(sum(totals.values()),3),'apps':distribution(totals),'daily':days,'coverage':coverage}
 
 
 def pc(config, start, end, active_time):

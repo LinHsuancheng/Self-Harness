@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from interface import load_config
+from interfaces.periods import DEFAULT_TIMEZONE
 
 parser=argparse.ArgumentParser()
 parser.add_argument('--config',default='config.json')
@@ -85,10 +86,10 @@ WantedBy={'timers.target'}
     units.append(unit+'.timer')
 
 # --- daily report timer ---
-report_time=config.get('schedule',{}).get('report_time','09:05')
+report_time=config.get('schedule',{}).get('report_time','09:00')
 if not isinstance(report_time,str) or not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d',report_time):
     raise ValueError('schedule.report_time must use HH:MM')
-timezone=config.get('timezone','UTC')
+timezone=config.get('timezone',DEFAULT_TIMEZONE)
 if not isinstance(timezone,str):
     raise ValueError('timezone must be an IANA timezone name')
 ZoneInfo(timezone)

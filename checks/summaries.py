@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from interfaces.operator import ingest, summarize, context
+from interfaces.summary import iphone as iphone_summary
 
 with tempfile.TemporaryDirectory() as directory:
     root=Path(directory)
@@ -38,7 +39,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert (weight['min'],weight['max'],weight['mean'])==(77,78,77.5)
     assert summarize(config,'sleep',start,end)['summary']['sleep_hours']==6
     phone=summarize(config,'iphone_screen_time',start,end)['summary']
-    assert phone['total_minutes']==120 and phone['apps'][0]['share']==0.75
+    assert phone['total_minutes']==0 and phone['coverage']['incomplete'] is True
     pc=summarize(config,'pc_screen_time',start,end)['summary']
     assert pc['total_minutes']==60 and sum(h['minutes'] for h in pc['hourly'])==60
     assert len(pc['activities'])==2 and sum(site['minutes'] for site in pc['activities'])==60
@@ -67,3 +68,19 @@ assert sum(item['minutes'] for item in items)==12
 assert next(item for item in items if item['name']=='a.test')['topics']==['Read']
 assert any(item['kind']=='other' for item in items)
 print('PASS: browser replaced by sites, minor activities grouped, total duration retained')
+
+def phone(at,app,browser=0):
+    apps=[{'app':'App','duration':app}]
+    if browser:apps.append({'app':'Browser','duration':browser})
+    return {'observed_at':at,'data':{'apps':apps}}
+phone_rows=[phone('2026-10-13T08:58:00+08:00',100),phone('2026-10-13T23:58:00+08:00',160,20),
+            phone('2026-10-14T08:59:00+08:00',30,10),phone('2026-10-14T23:58:00+08:00',80,20)]
+logical=iphone_summary(phone_rows,'2026-10-13T09:00:00+08:00','2026-10-14T09:00:00+08:00','Asia/Singapore',9)
+assert logical['total_minutes']==120
+assert {x['app']:x['minutes'] for x in logical['apps']}=={'App':90,'Browser':30}
+assert logical['coverage']['estimated'] is True and logical['coverage']['incomplete'] is False
+tomorrow=iphone_summary(phone_rows,'2026-10-14T09:00:00+08:00','2026-10-15T09:00:00+08:00','Asia/Singapore',9)
+assert {x['app']:x['minutes'] for x in tomorrow['apps']}=={'App':50,'Browser':10}
+missing=iphone_summary(phone_rows[1:3],'2026-10-13T09:00:00+08:00','2026-10-14T09:00:00+08:00','Asia/Singapore',9)
+assert missing['coverage']['incomplete'] is True and '缺少D日09点附近快照' in missing['coverage']['reason']
+print('PASS: iPhone logical-day snapshot deltas, app reset, boundary exclusion, coverage status')

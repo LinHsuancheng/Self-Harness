@@ -1,332 +1,55 @@
 <!doctype html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{{TITLE}}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400&family=JetBrains+Mono:wght@300&display=swap" rel="stylesheet">
 <style>
-/* Soft Editorial — full-screen slide deck, one section per viewport */
-:root {
-  --bg:     #F5F2EC;
-  --fg:     #1B1910;
-  --fg2:    #8A8278;
-  --accent: #5A6A53;
-  --rule:   rgba(27,25,16,.09);
-  --tag-bg: rgba(90,106,83,.07);
-  --tag-bd: rgba(90,106,83,.22);
-}
-*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0 }
-html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg) }
-body { font-family: 'DM Sans', sans-serif; font-weight: 300; font-size: 19px; line-height: 1.65 }
-
-/* deck */
-.deck { position: fixed; inset: 0 }
-.track { display: flex; width: 100%; height: 100%; transition: transform .42s cubic-bezier(.4,0,.2,1) }
-
-/* slides */
-.slide {
-  flex: 0 0 100%;
-  width: 100%; height: 100%;
-  overflow-y: auto; overflow-x: hidden;
-  padding-top: 64px; padding-bottom: 72px;
-  padding-left: max(52px, env(safe-area-inset-left,0px));
-  padding-right: max(52px, env(safe-area-inset-right,0px));
-}
-.slide-inner { max-width: 620px; margin: 0 auto }
-.slide.s-cover { display: flex; align-items: center; justify-content: center }
-
-/* navigation buttons */
-.nav-btn {
-  position: fixed; top: 50%; transform: translateY(-50%);
-  background: none; border: none; cursor: pointer;
-  color: var(--fg2); font-size: 44px; padding: 20px 22px;
-  transition: color .2s, opacity .2s; z-index: 20; line-height: 1;
-}
-.nav-btn:hover { color: var(--fg) }
-.nav-btn.disabled { opacity: .15; pointer-events: none }
-.nav-prev { left: max(0px, env(safe-area-inset-left,0px)) }
-.nav-next { right: max(0px, env(safe-area-inset-right,0px)) }
-
-/* dot nav */
-.dots {
-  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 8px; z-index: 20;
-}
-.dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--fg); opacity: .18; cursor: pointer;
-  border: none; transition: opacity .2s, transform .2s;
-}
-.dot.on { opacity: .7; transform: scale(1.4) }
-
-/* slide counter */
-.slide-no {
-  position: fixed; top: 22px;
-  right: max(28px, env(safe-area-inset-right,0px));
-  font-family: 'JetBrains Mono', monospace; font-size: 14px;
-  color: var(--fg2); letter-spacing: .08em; z-index: 20;
-}
-
-/* cover */
-.cover-kicker {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 28px;
-}
-.cover-title {
-  font-family: 'Cormorant Garamond', serif; font-weight: 300;
-  font-size: clamp(38px, 6vw, 54px); line-height: 1.15;
-  text-wrap: balance; margin-bottom: 20px;
-}
-.cover-rule { width: 44px; height: 1px; background: var(--accent); margin-bottom: 20px }
-.cover-summary { font-size: 19px; color: var(--fg2); line-height: 1.75; max-width: 500px }
-
-/* section kicker */
-.kicker {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 22px;
-}
-
-/* large stat */
-.stat-line { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px }
-.stat-num {
-  font-family: 'Cormorant Garamond', serif; font-weight: 300;
-  font-size: clamp(64px, 10vw, 80px); line-height: 1;
-  color: var(--fg); font-variant-numeric: tabular-nums;
-}
-.stat-unit { font-family: 'DM Sans', sans-serif; font-size: 24px; color: var(--fg2) }
-.delta {
-  font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--fg2);
-  margin-bottom: 24px; min-height: 20px;
-}
-
-/* insight — AI text */
-.insight {
-  font-family: 'Cormorant Garamond', serif; font-style: italic;
-  font-size: 21px; line-height: 1.7; color: var(--fg2);
-  border-left: 1px solid rgba(27,25,16,.12); padding-left: 16px;
-  margin-top: 26px; max-width: 520px;
-}
-
-/* bar chart */
-.bars { margin: 2px 0 }
-.bar-row {
-  display: grid; grid-template-columns: 140px 1fr 58px 36px;
-  align-items: center; gap: 10px; padding: 6px 0;
-}
-@media (max-width: 480px) { .bar-row { grid-template-columns: 96px 1fr 44px 0 } .bar-pct { display:none } }
-.bar-name { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
-.bar-track { height: 5px; background: var(--rule); border-radius: 2px; overflow: hidden }
-.bar-fill { height: 100%; background: var(--accent); border-radius: 2px; opacity: .6 }
-.bar-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums }
-.bar-pct { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--fg2); text-align: right }
-
-/* sleep sessions */
-.sessions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px }
-.session-tag {
-  font-family: 'JetBrains Mono', monospace; font-size: 14px;
-  border: 1px solid var(--tag-bd); background: var(--tag-bg);
-  border-radius: 2px; padding: 4px 12px;
-}
-.sub-label {
-  font-family: 'JetBrains Mono', monospace; font-size: 12px;
-  letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); margin-bottom: 10px;
-}
-
-/* weight */
-.weight-range { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--fg2); margin-top: 4px }
-
-/* todo counts */
-.counts { display: flex; gap: 36px; margin-bottom: 24px; flex-wrap: wrap }
-.cnt-num {
-  font-family: 'Cormorant Garamond', serif; font-weight: 300;
-  font-size: 54px; display: block; line-height: 1; font-variant-numeric: tabular-nums;
-}
-.cnt-lbl {
-  font-family: 'JetBrains Mono', monospace; font-size: 12px;
-  letter-spacing: .1em; text-transform: uppercase; color: var(--fg2);
-  margin-top: 4px; display: block;
-}
-.task-list { border-top: 1px solid var(--rule) }
-.task-item {
-  display: flex; gap: 12px; padding: 8px 0;
-  border-bottom: 1px solid var(--rule); font-size: 17px;
-}
-.task-dash { color: var(--accent); flex-shrink: 0; font-family: 'JetBrains Mono', monospace }
-
-/* changes & recommendations */
-.cr-grid { display: grid; grid-template-columns: 1fr; gap: 0 }
-@media (min-width: 600px) { .cr-grid { grid-template-columns: 1fr 1fr; gap: 0 40px } }
-.change-item, .rec-item { padding: 13px 0; border-bottom: 1px solid var(--rule) }
-.change-item:last-child, .rec-item:last-child { border-bottom: none }
-.change-area, .rec-action { font-size: 18px; font-weight: 400; margin-bottom: 4px }
-.change-obs, .rec-reason { font-size: 16px; color: var(--fg2); line-height: 1.6 }
-.change-trend { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent); margin-top: 4px; letter-spacing:.04em }
-
-/* footer on last slide */
-.slide-footer {
-  margin-top: 32px; font-family: 'JetBrains Mono', monospace;
-  font-size: 13px; color: var(--fg2); letter-spacing: .06em;
-}
-
-.empty { font-size: 16px; color: var(--fg2); font-style: italic }
+:root{--paper:#f4f0e6;--ink:#172019;--muted:#667068;--green:#174d3b;--green-soft:#dce8df;--amber:#b56b1e;--line:#d8d3c7;--white:#fffdf8}
+*{box-sizing:border-box}html{background:var(--paper);color:var(--ink)}body{margin:0;max-width:100%;font:16px/1.55 Georgia,"Noto Serif SC",serif;overflow-wrap:anywhere}
+.page{width:100%;max-width:1120px;margin:auto;padding:44px 28px 72px}.eyebrow,.meta,.label,.bar-val,.bar-pct,.cnt-lbl,small{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.eyebrow{color:var(--green);font-size:12px;letter-spacing:.12em;text-transform:uppercase}.mast{border-bottom:2px solid var(--ink);padding-bottom:24px}
+h1{font-size:clamp(38px,6vw,72px);line-height:.98;letter-spacing:-.035em;margin:12px 0 18px;max-width:850px}.summary{font-size:clamp(18px,2.3vw,25px);max-width:760px;margin:0;color:#354139}
+.meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:24px;color:var(--muted);font-size:12px}.meta span{min-width:0;overflow-wrap:anywhere}.meta strong{color:var(--ink)}
+.hero{display:grid;grid-template-columns:1.2fr 2fr;gap:18px;margin:22px 0}.sleep-hero,.snapshot,.card{background:var(--white);border:1px solid var(--line);border-radius:14px}
+.sleep-hero{padding:26px;background:var(--green);color:#fff}.sleep-hero .label{color:#cbe0d4}.big{font-size:clamp(58px,9vw,92px);line-height:1;margin:16px 0 8px;font-variant-numeric:tabular-nums}.delta{color:#d8eadf;margin:0}
+.snapshot{padding:18px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.metric{min-width:0;padding:8px 12px;border-left:1px solid var(--line)}.metric:first-child{border-left:0}.metric b{display:block;font-size:27px;line-height:1.1;margin:7px 0}.metric span{color:var(--muted);font-size:13px}
+.lead-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;margin-bottom:18px}.lead{padding:22px;border-left:5px solid var(--green);background:var(--green-soft)}.lead.action{border-color:var(--amber);background:#f3e4cc}.lead h2{margin:0 0 8px;font-size:13px;font-family:ui-monospace,monospace;text-transform:uppercase;letter-spacing:.1em}.lead p{margin:0;font-size:18px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.card{padding:24px;min-width:0}.card.wide{grid-column:1/-1}.card h2{font-size:22px;margin:0 0 18px}.card h3{font-size:12px;color:var(--muted);font-family:ui-monospace,monospace;text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px}.insight{color:#465048;border-top:1px solid var(--line);padding-top:14px;margin:18px 0 0}.notice{background:#f6e9d4;color:#74430f;border-left:4px solid var(--amber);padding:10px 12px;margin:12px 0}.source-note{font-size:13px;color:var(--muted)}
+.sessions{display:flex;flex-wrap:wrap;gap:8px}.session-tag{border:1px solid #a8b9ad;background:var(--green-soft);border-radius:999px;padding:5px 10px;font-family:ui-monospace,monospace;font-size:13px}
+.domain-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:end;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--line)}.domain-stat{font-size:clamp(46px,7vw,72px);line-height:.9;font-variant-numeric:tabular-nums}.domain-stat small{font-size:15px;color:var(--muted)}.domain-meta{min-width:0}.domain-meta .delta{color:var(--green);font-size:14px}.detail-line{font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);margin:6px 0 0}
+.bars{display:grid;gap:8px;min-width:0}.bar-row{display:grid;min-width:0;grid-template-columns:minmax(90px,150px) minmax(0,1fr) 64px 46px;gap:10px;align-items:center}.bar-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bar-track{min-width:0;height:7px;background:#e5e1d8;border-radius:8px;overflow:hidden}.bar-fill{height:100%;background:var(--green)}.bar-val,.bar-pct{font-size:12px;text-align:right}
+.hourly{display:flex;height:130px;gap:5px;align-items:flex-end;border-bottom:1px solid var(--line);padding-top:10px;overflow-x:auto}.hour{height:100%;min-width:26px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}.hour span{display:block;width:70%;min-height:4px;background:var(--green);border-radius:4px 4px 0 0}.hour small{font-size:9px;color:var(--muted);margin-top:5px;writing-mode:vertical-rl}
+.counts{display:flex;gap:28px;flex-wrap:wrap}.cnt-num{font-size:40px;display:block}.cnt-lbl{font-size:11px;color:var(--muted)}.task-list{margin-top:12px}.task-item{padding:8px 0;border-bottom:1px solid var(--line)}.task-dash{color:var(--green);margin-right:8px}
+.cr-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}.change-item,.rec-item{padding:12px 0;border-bottom:1px solid var(--line)}.change-area,.rec-action{font-weight:bold;margin:0}.change-obs,.change-trend,.rec-reason{color:var(--muted);margin:3px 0}.empty{color:var(--muted);font-style:italic}
+footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+:focus-visible{outline:3px solid var(--amber);outline-offset:3px}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+@media(max-width:760px){.page{padding:24px 16px 48px}.hero,.lead-grid,.grid{grid-template-columns:minmax(0,1fr)}.snapshot{grid-template-columns:repeat(2,minmax(0,1fr))}.metric:nth-child(3){border-left:0}.card.wide{grid-column:auto}.cr-grid{grid-template-columns:minmax(0,1fr)}.bar-row{grid-template-columns:minmax(72px,90px) minmax(0,1fr) 48px}.bar-pct{display:none}}
 </style>
 </head>
-<body>
-<div class="deck">
-  <div class="track" id="track">
-
-    <!-- 1 · cover -->
-    <div class="slide s-cover">
-      <div class="slide-inner">
-        <p class="cover-kicker">{{PERIOD_LABEL}}</p>
-        <h1 class="cover-title">{{TITLE}}</h1>
-        <div class="cover-rule"></div>
-        <p class="cover-summary">{{SUMMARY}}</p>
-      </div>
-    </div>
-
-    <!-- 2 · sleep -->
-    <div class="slide">
-      <div class="slide-inner">
-        <p class="kicker">睡眠</p>
-        <div class="stat-line"><span class="stat-num">{{SLEEP_STAT}}</span></div>
-        <p class="delta">{{SLEEP_CHANGE}}</p>
-        <div class="sessions">{{SLEEP_SESSIONS}}</div>
-        <p class="sub-label">睡眠阶段</p>
-        <div class="bars">{{SLEEP_STAGES}}</div>
-        <p class="insight">{{INSIGHT_SLEEP}}</p>
-      </div>
-    </div>
-
-    <!-- 3 · PC -->
-    <div class="slide">
-      <div class="slide-inner">
-        <p class="kicker">PC 使用</p>
-        <div class="stat-line">
-          <span class="stat-num">{{PC_STAT}}</span>
-          <span class="stat-unit">min &nbsp;·&nbsp; {{PC_HOURS}}</span>
-        </div>
-        <p class="delta">{{PC_CHANGE}}</p>
-        <div class="bars">{{PC_BARS}}</div>
-        <p class="insight">{{INSIGHT_PC}}</p>
-      </div>
-    </div>
-
-    <!-- 4 · iPhone -->
-    <div class="slide">
-      <div class="slide-inner">
-        <p class="kicker">iPhone 使用</p>
-        <div class="stat-line">
-          <span class="stat-num">{{IPHONE_STAT}}</span>
-          <span class="stat-unit">min &nbsp;·&nbsp; {{IPHONE_HOURS}}</span>
-        </div>
-        <p class="delta">{{IPHONE_CHANGE}}</p>
-        <div class="bars">{{IPHONE_BARS}}</div>
-        <p class="insight">{{INSIGHT_IPHONE}}</p>
-      </div>
-    </div>
-
-    <!-- 5 · weight -->
-    <div class="slide">
-      <div class="slide-inner">
-        <p class="kicker">体重</p>
-        <div class="stat-line">
-          <span class="stat-num">{{WEIGHT_STAT}}</span>
-          <span class="stat-unit">kg</span>
-        </div>
-        <p class="delta">{{WEIGHT_CHANGE}}</p>
-        <p class="weight-range">{{WEIGHT_RANGE}}</p>
-        <p class="insight">{{INSIGHT_WEIGHT}}</p>
-      </div>
-    </div>
-
-    <!-- 6 · tasks -->
-    <div class="slide">
-      <div class="slide-inner">
-        <p class="kicker">任务</p>
-        <div class="counts">
-          <div><span class="cnt-num">{{TODO_COMPLETED_COUNT}}</span><span class="cnt-lbl">完成</span></div>
-          <div><span class="cnt-num">{{TODO_PENDING_COUNT}}</span><span class="cnt-lbl">待办</span></div>
-          <div><span class="cnt-num">{{TODO_APPEARED_COUNT}}</span><span class="cnt-lbl">新增</span></div>
-          <div><span class="cnt-num">{{TODO_STALLED_COUNT}}</span><span class="cnt-lbl">滞留</span></div>
-        </div>
-        <div class="task-list">{{TODO_COMPLETED}}</div>
-        <p class="insight">{{INSIGHT_TASKS}}</p>
-      </div>
-    </div>
-
-    <!-- 7 · changes & recommendations -->
-    <div class="slide">
-      <div class="slide-inner">
-        <p class="kicker">变化与建议</p>
-        <div class="cr-grid">
-          <div>{{CHANGES}}</div>
-          <div>{{RECOMMENDATIONS}}</div>
-        </div>
-        <p class="slide-footer">Self Harness · 自动生成</p>
-      </div>
-    </div>
-
-  </div><!-- /track -->
-
-  <button class="nav-btn nav-prev disabled" id="prev" aria-label="上一页">&#8249;</button>
-  <button class="nav-btn nav-next" id="next" aria-label="下一页">&#8250;</button>
-  <div class="dots" id="dots"></div>
-  <div class="slide-no" id="slide-no">1 / 7</div>
+<body><main class="page">
+<header class="mast">
+  <p class="eyebrow">Self Harness · Morning Brief</p>
+  <h1>{{TITLE}}</h1><p class="summary">{{SUMMARY}}</p>
+  <div class="meta"><span><strong>统计范围</strong> {{PERIOD_START}} → {{PERIOD_END}}</span><span><strong>时区</strong> {{TIMEZONE}}</span><span><strong>生成</strong> {{GENERATED_AT}}</span></div>
+</header>
+<section class="hero">
+  <div class="sleep-hero"><span class="label">昨晚完整睡眠</span><div class="big">{{SLEEP_STAT}}</div><p class="delta">{{SLEEP_CHANGE}}</p></div>
+  <div class="snapshot">
+    <div class="metric"><span>PC 活跃</span><b>{{PC_STAT}}</b><span>{{PC_HOURS}}</span></div>
+    <div class="metric"><span>iPhone 累计</span><b>{{IPHONE_STAT}}</b><span>{{IPHONE_HOURS}}</span></div>
+    <div class="metric"><span>完成 / 待办</span><b>{{TODO_COMPLETED_COUNT}} / {{TODO_PENDING_COUNT}}</b><span>任务</span></div>
+    <div class="metric"><span>体重均值</span><b>{{WEIGHT_STAT}}</b><span>{{WEIGHT_RANGE}}</span></div>
+  </div>
+</section>
+<section class="lead-grid"><div class="lead"><h2>最重要结论</h2><p>{{SUMMARY}}</p></div><div class="lead action"><h2>下一步</h2>{{RECOMMENDATIONS}}</div></section>
+<div class="grid">
+  <section class="card"><h2>昨晚睡眠</h2><div class="sessions">{{SLEEP_SESSIONS}}</div>{{SLEEP_INCOMPLETE}}<h3>阶段</h3><div class="bars">{{SLEEP_STAGES}}</div><p class="insight">{{INSIGHT_SLEEP}}</p></section>
+  <section class="card"><h2>任务推进</h2><div class="domain-head"><div class="domain-stat">{{TODO_COMPLETED_COUNT}}<small> 项完成</small></div><div class="domain-meta"><p class="delta">{{TODO_CHANGE}}</p><p class="detail-line">待办 {{TODO_PENDING_COUNT}} · 新增 {{TODO_APPEARED_COUNT}}</p></div></div><p class="source-note">{{TODO_NOTE}}</p><h3>完成清单</h3><div class="bars">{{TODO_GROUPS}}</div><h3>完成明细</h3><div class="task-list">{{TODO_COMPLETED}}</div><p class="insight">{{INSIGHT_TASKS}}</p></section>
+  <section class="card wide"><h2>PC 使用</h2><div class="domain-head"><div class="domain-stat">{{PC_STAT}}<small> min</small></div><div class="domain-meta"><p class="delta">{{PC_CHANGE}}</p><p class="detail-line">{{PC_DETAIL}}</p></div></div><p class="source-note">{{PC_NOTE}}</p><h3>小时活动</h3><div class="hourly">{{PC_HOURLY}}</div><h3>主要活动</h3><div class="bars">{{PC_BARS}}</div><p class="insight">{{INSIGHT_PC}}</p></section>
+  <section class="card"><h2>iPhone 使用</h2><div class="domain-head"><div class="domain-stat">{{IPHONE_STAT}}<small> min</small></div><div class="domain-meta"><p class="delta">{{IPHONE_CHANGE}}</p><p class="detail-line">{{IPHONE_DETAIL}}</p></div></div><p class="source-note">{{IPHONE_NOTE}}</p><h3>主要 App</h3><div class="bars">{{IPHONE_BARS}}</div><p class="insight">{{INSIGHT_IPHONE}}</p></section>
+  <section class="card"><h2>体重</h2><div class="domain-head"><div class="domain-stat">{{WEIGHT_STAT}}<small> {{WEIGHT_UNIT}}</small></div><div class="domain-meta"><p class="delta">{{WEIGHT_CHANGE}}</p><p class="detail-line">{{WEIGHT_RANGE}}</p></div></div><p class="source-note">{{WEIGHT_NOTE}}</p><h3>测量明细</h3><p>{{WEIGHT_DETAILS}}</p><p class="insight">{{INSIGHT_WEIGHT}}</p></section>
+  <section class="card wide"><h2>变化</h2><div class="cr-grid"><div>{{CHANGES}}</div><div><h3>建议</h3>{{RECOMMENDATIONS}}</div></div></section>
 </div>
-
-<script>
-(function() {
-  var TOTAL = 7;
-  var cur = 0;
-  var track = document.getElementById('track');
-  var prev = document.getElementById('prev');
-  var next = document.getElementById('next');
-  var slideNo = document.getElementById('slide-no');
-  var dotsEl = document.getElementById('dots');
-
-  for (var i = 0; i < TOTAL; i++) {
-    var d = document.createElement('button');
-    d.className = 'dot' + (i === 0 ? ' on' : '');
-    d.setAttribute('aria-label', '第' + (i + 1) + '页');
-    d.dataset.i = i;
-    dotsEl.appendChild(d);
-  }
-
-  function go(n) {
-    cur = Math.max(0, Math.min(TOTAL - 1, n));
-    track.style.transform = 'translateX(-' + (cur * 100) + '%)';
-    slideNo.textContent = (cur + 1) + ' / ' + TOTAL;
-    var dots = dotsEl.querySelectorAll('.dot');
-    for (var i = 0; i < dots.length; i++) dots[i].classList.toggle('on', i === cur);
-    prev.classList.toggle('disabled', cur === 0);
-    next.classList.toggle('disabled', cur === TOTAL - 1);
-  }
-
-  prev.addEventListener('click', function() { go(cur - 1) });
-  next.addEventListener('click', function() { go(cur + 1) });
-  dotsEl.addEventListener('click', function(e) {
-    var b = e.target.closest('.dot');
-    if (b) go(parseInt(b.dataset.i, 10));
-  });
-
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); go(cur + 1) }
-    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); go(cur - 1) }
-  });
-
-  var sx = 0;
-  var deck = document.querySelector('.deck');
-  deck.addEventListener('touchstart', function(e) { sx = e.touches[0].clientX }, { passive: true });
-  deck.addEventListener('touchend', function(e) {
-    var dx = e.changedTouches[0].clientX - sx;
-    if (Math.abs(dx) > 48) go(dx < 0 ? cur + 1 : cur - 1);
-  }, { passive: true });
-
-  go(0);
-})();
-</script>
-</body>
-</html>
+<footer>{{PERIOD_LABEL}} · 统计边界与生成时间分别列示；09:00 触发后，生成和邮件投递需要少量处理时间。</footer>
+</main></body></html>

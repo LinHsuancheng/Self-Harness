@@ -22,3 +22,6 @@ database/
 
 # Logs
 *.log
+
+# Agent handoff / working notes (kept locally for reference, not tracked)
+tmp-agent-communication/

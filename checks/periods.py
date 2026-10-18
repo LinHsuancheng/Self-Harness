@@ -5,13 +5,18 @@ import sys
 import tempfile
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from interfaces.periods import bounds, previous, buckets
+from interfaces.periods import bounds, previous, buckets, hourly
 from interfaces.operator import ingest, summarize, context
 
-assert bounds('month','2024-02-20','Asia/Singapore')==('2024-02-01T00:00:00+08:00','2024-03-01T00:00:00+08:00')
-assert previous('2024-03-01T00:00:00+08:00','2024-04-01T00:00:00+08:00','month','Asia/Singapore')==('2024-02-01T00:00:00+08:00','2024-03-01T00:00:00+08:00')
+assert bounds('month','2024-02-20','Asia/Singapore')==('2024-02-01T09:00:00+08:00','2024-03-01T09:00:00+08:00')
+assert previous('2024-03-01T09:00:00+08:00','2024-04-01T09:00:00+08:00','month','Asia/Singapore')==('2024-02-01T09:00:00+08:00','2024-03-01T09:00:00+08:00')
 assert len(buckets('2026-01-01T00:00:00+08:00','2027-01-01T00:00:00+08:00','year','Asia/Singapore'))==12
 assert len(buckets('2026-10-01T00:00:00+08:00','2026-11-01T00:00:00+08:00','month','Asia/Singapore'))==5
+assert bounds('day','2026-10-13','Asia/Singapore',9)==('2026-10-13T09:00:00+08:00','2026-10-14T09:00:00+08:00')
+spring=hourly('2026-03-08T00:00:00-05:00','2026-03-09T00:00:00-04:00','America/New_York')
+fall=hourly('2026-11-01T00:00:00-04:00','2026-11-02T00:00:00-05:00','America/New_York')
+assert len(spring)==23 and len(fall)==25
+assert all(a!=b for a,b in spring+fall)
 with tempfile.TemporaryDirectory() as directory:
     root=Path(directory)
     config={'raw_dir':str(root/'raw'),'database_dir':str(root/'db'),'timezone':'Asia/Singapore',
@@ -46,6 +51,20 @@ with tempfile.TemporaryDirectory() as directory:
     midnight=summarize(config,'sleep','2026-10-06T00:00:00+08:00','2026-10-07T00:00:00+08:00')
     assert midnight['summary']['session_count']==1
     assert midnight['summary']['daily_average_hours']==6
+    put('sleep','morning.gz','核心睡眠,2026-10-12T23:00:00+08:00,2026-10-13T03:00:00+08:00\n清醒时间,2026-10-13T03:00:00+08:00,2026-10-13T03:30:00+08:00\n深度睡眠,2026-10-13T03:30:00+08:00,2026-10-13T07:30:00+08:00\n')
+    ingest(config,'sleep')
+    morning=summarize(dict(config,day_start_hour=9),'sleep','2026-10-12T09:00:00+08:00','2026-10-13T09:00:00+08:00')
+    assert morning['summary']['sleep_hours']==8
+    assert sum(s['hours'] for s in morning['summary']['stages'])==8
+    assert morning['data_quality']['effective_dates']==['2026-10-12']
+    put('sleep','ongoing.gz','核心睡眠,2026-10-14T08:00:00+08:00,2026-10-14T10:00:00+08:00\n')
+    put('weight','boundary.gz','2026-10-13T09:00:00+08:00,70\n2026-10-14T09:00:00+08:00,90\n')
+    ingest(config,'sleep');ingest(config,'weight')
+    cutoff=summarize(dict(config,day_start_hour=9),'sleep','2026-10-13T09:00:00+08:00','2026-10-14T09:00:00+08:00')
+    assert cutoff['summary']['ongoing_sessions'][0]['sleep_hours']==1
+    assert cutoff['summary']['ongoing_sessions'][0]['complete'] is False
+    boundary=summarize(dict(config,day_start_hour=9),'weight','2026-10-13T09:00:00+08:00','2026-10-14T09:00:00+08:00')
+    assert boundary['summary']['mean']==70
     result=context(config,start,end,level='month')
     assert len(result)==5 and result['iphone_screen_time']['summary']['total_minutes'] is None
     assert result['todo']['summary']['completed_count'] is None

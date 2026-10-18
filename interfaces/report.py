@@ -56,10 +56,10 @@ def coverage(source, rows, start, end):
 def quality(source, rows, start, end, zone, completed=(), day_start_hour=0):
     daily=periods.days(start,end,zone,day_start_hour)
     intervals=coverage(source,rows,start,end)
-    observed={periods.local(r['observed_at'],zone).date().isoformat() for r in rows} if source not in ('sleep','pc_screen_time') else set()
-    observed.update(periods.local(c['completed_at'],zone).date().isoformat() for c in completed)
+    observed={periods.logical_date(r['observed_at'],zone,day_start_hour) for r in rows} if source not in ('sleep','pc_screen_time') else set()
+    observed.update(periods.logical_date(c['completed_at'],zone,day_start_hour) for c in completed)
     for x,y in daily:
-        if any(intersect(a,b,time(x),time(y)) for a,b in intervals):observed.add(periods.local(x,zone).date().isoformat())
+        if any(intersect(a,b,time(x),time(y)) for a,b in intervals):observed.add(periods.logical_date(x,zone,day_start_hour))
     dates=sorted(observed)
     points=[time(r['observed_at']) for r in rows]+[time(c['completed_at']) for c in completed]
     return {'record_count':len(rows),'calendar_days':len(daily),'effective_days':len(dates),
@@ -81,7 +81,7 @@ def sleep_sessions(rows,gap_minutes):
     output=[]
     for s in sessions:
         spans=[(time(d['start']),time(d['end'])) for d in s['stages'] if '清醒' not in d['stage'] and d['stage'] not in ('awake','卧床','inBed')]
-        if spans:output.append({'start':s['start'].isoformat(),'end':s['end'].isoformat(),'sleep_hours':round(duration(spans)/3600,6)})
+        if spans:output.append({'start':s['start'].isoformat(),'end':s['end'].isoformat(),'sleep_hours':round(duration(spans)/3600,6),'_stages':s['stages']})
     return output
 
 
@@ -104,19 +104,36 @@ def following(rows,end):
 
 def calculate(config,source,rows,start,end,sessions=()):
     from . import operator
-    selected=clip(rows,start,end);zone=config.get('timezone','UTC')
+    selected=clip(rows,start,end);zone=config.get('timezone',periods.DEFAULT_TIMEZONE)
     if source=='weight':result=summary.weight(selected,select_baseline(rows,start))
     elif source=='sleep':
-        result=summary.sleep(selected,start,end)
         owned=[s for s in sessions if time(start)<=time(s['end'])<time(end)]
+        owned_rows=[{'data':stage} for session in owned for stage in session['_stages']]
+        if owned_rows:
+            full_start=min(stage['data']['start'] for stage in owned_rows)
+            full_end=max(stage['data']['end'] for stage in owned_rows)
+            result=summary.sleep(owned_rows,full_start,full_end)
+        else:
+            result=summary.sleep([],start,end)
+        result['stages']=[stage for stage in result['stages']
+                          if '清醒' not in stage['stage'] and stage['stage'] not in ('awake','卧床','inBed')]
+        ongoing=[]
+        for session in sessions:
+            if time(session['start'])<time(end)<time(session['end']):
+                spans=[]
+                for stage in session['_stages']:
+                    if '清醒' in stage['stage'] or stage['stage'] in ('awake','卧床','inBed'):continue
+                    if span:=intersect(time(stage['start']),time(stage['end']),time(start),time(end)):spans.append(span)
+                ongoing.append({'start':session['start'],'end':end,'sleep_hours':round(duration(spans)/3600,6),'complete':False})
         result['session_count']=len(owned)
         result['average_session_hours']=round(sum(s['sleep_hours'] for s in owned)/len(owned),3) if owned else None
-        result['sessions']=owned
+        result['sessions']=[{k:v for k,v in s.items() if k!='_stages'}|{'complete':True} for s in owned]
+        result['ongoing_sessions']=ongoing
         result['sleep_start_distribution']=histogram(owned,'start',zone)
         result['wake_distribution']=histogram(owned,'end',zone)
         total=sum(s['hours'] for s in result['stages'])
         for stage in result['stages']:stage['share']=round(stage['hours']/total,4) if total else 0
-    elif source=='iphone_screen_time':result=summary.iphone(selected,zone)
+    elif source=='iphone_screen_time':result=summary.iphone(rows,start,end,zone,config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR))
     elif source=='pc_screen_time':
         activity=operator.pc_active_time(config,start,end,selected)
         totals=defaultdict(float)
@@ -132,10 +149,10 @@ def calculate(config,source,rows,start,end,sessions=()):
         for task in result['completed_tasks']:groups[task['list_id']]+=1
         names={l['list']['id']:l['list'].get('displayName',l['list']['id']) for r in rows for l in r['data']['lists']}
         result['completed_by_list']=[{'list_id':name,'list_name':names[name],'count':count,'share':round(count/result['completed_count'],4)} for name,count in sorted(groups.items())]
-    q=quality(source,selected,start,end,zone,result.get('completed_tasks',()),config.get('day_start_hour',0))
+    q=quality(source,selected,start,end,zone,result.get('completed_tasks',()),config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR))
     if source=='todo':q['completion_count']=len(result['completed_tasks'])
     if source=='sleep':
-        dates=sorted({periods.local(s['end'],zone).date().isoformat() for s in owned})
+        dates=sorted({periods.logical_date(s['end'],zone,config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR)) for s in owned})
         q['observed_days']=q['effective_days']
         q['effective_days']=len(dates);q['effective_dates']=dates;q['average_denominator']=len(dates)
         q['day_coverage']=round(len(dates)/q['calendar_days'],4)
@@ -155,7 +172,7 @@ def load(config,source,start,end):
     from . import operator
     with closing(operator.database(config,source)) as db:
         rows=[operator.material(source,r) for r in db.rows(start=start,end=end)]
-        if source in ('weight','todo'):
+        if source in ('weight','todo','iphone_screen_time'):
             earlier=db.rows(before=start)
             later=db.rows(start=end) if source=='todo' else []
             rows=([operator.material(source,earlier[-1])] if earlier else [])+rows+([operator.material(source,later[0])] if later else [])
@@ -220,8 +237,8 @@ def comparison(source,current,prior,quality_current,quality_prior,start,end):
 
 
 def report(config,source,start,end,level):
-    zone=config.get('timezone','UTC')
-    day_start_hour=config.get('day_start_hour',0)
+    zone=config.get('timezone',periods.DEFAULT_TIMEZONE)
+    day_start_hour=config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR)
     start,end=periods.local(start,zone).isoformat(),periods.local(end,zone).isoformat()
     if time(start)>=time(end):raise ValueError('Start must precede end')
     prior_start,prior_end=periods.previous(start,end,level,zone)
@@ -244,12 +261,10 @@ def report(config,source,start,end,level):
     compared=comparison(source,comparison_current,comparison_prior,q,pq,prior_start,prior_end)
     current=display(config,source,current,level)
     if source=='pc_screen_time' and level=='day':
-        hourly=[];cursor=periods.local(start,zone);upper=periods.local(end,zone)
-        while cursor<upper:
-            next_hour=min(cursor.replace(minute=0,second=0,microsecond=0)+timedelta(hours=1),upper)
-            item,iq=compute(cursor.isoformat(),next_hour.isoformat())
-            if iq['effective_days']:hourly.append({'start':cursor.isoformat(),'end':next_hour.isoformat(),'minutes':item['total_minutes'],'observed_hours':iq['observed_hours']})
-            cursor=next_hour
+        hourly=[]
+        for hour_start,hour_end in periods.hourly(start,end,zone):
+            item,iq=compute(hour_start,hour_end)
+            if iq['effective_days']:hourly.append({'start':hour_start,'end':hour_end,'minutes':item['total_minutes'],'observed_hours':iq['observed_hours']})
         current['hourly']=hourly
     focus={'weight':'mean','sleep':'daily_average_hours','iphone_screen_time':'daily_average_minutes','pc_screen_time':'daily_average_minutes','todo':'daily_average_completed'}[source]
     valid=[t for t in trend if t['summary'].get(focus) is not None]

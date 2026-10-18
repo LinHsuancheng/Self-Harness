@@ -10,12 +10,15 @@ from interfaces import fetcher, operator, periods
 def load_config(filename):
     path = Path(filename).resolve()
     config = json.loads(path.read_text())
+    config.setdefault('timezone',periods.DEFAULT_TIMEZONE)
+    config.setdefault('day_start_hour',periods.DEFAULT_DAY_START_HOUR)
     config['raw_dir'] = str((path.parent / config.get('raw_dir',config.get('data_dir','raw'))).resolve())
     config['database_dir'] = str((path.parent / config['database_dir']).resolve())
     for settings in config['sources'].values():
         for key in ('raw_dir','cache_file'):
             if key in settings:
                 settings[key] = str((path.parent / settings[key]).resolve())
+    config.setdefault('schedule',{}).setdefault('report_time','09:00')
     return config
 
 
@@ -41,7 +44,7 @@ def main():
     args = parser.parse_args(); config=load_config(args.config)
     if args.command in ('query','summarize','context','todo-changes','pc-active-time'):
         if getattr(args,'date',None):
-            args.start,args.end=periods.bounds(args.level,args.date,config.get('timezone','UTC'),config.get('day_start_hour',0))
+            args.start,args.end=periods.bounds(args.level,args.date,config.get('timezone',periods.DEFAULT_TIMEZONE),config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR))
         if not args.start or not args.end:
             parser.error('Provide --start and --end, or --date for a calendar report')
     failed=False

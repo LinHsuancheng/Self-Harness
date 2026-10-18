@@ -4,10 +4,12 @@
 | --- | --- | --- |
 | 服务器 | self-harness-ingest.timer | 60秒 |
 | 服务器 | self-harness-todo.timer | 3600秒 |
-| 服务器 | self-harness-report.timer | 每天 06:00（配置时区） |
+| 服务器 | self-harness-report.timer | 每天 09:00（配置时区，示例/代码缺省） |
 | Windows PC | Self Harness ActivityWatch 任务 | 每小时 |
 
-服务器入库与 Todo 周期来自 schedule 配置；日报使用 `schedule.report_time` 和顶层 `timezone`，按该时区计算昨天并将 HTML 正文通过 Gmail 发送。
+服务器入库与 Todo 周期来自 schedule 配置；日报使用 `schedule.report_time` 和顶层 `timezone`。缺省在新加坡时间 09:00 触发，`--date yesterday` 生成昨日 09:00 至今日 09:00 的报告并发送。09:00 是触发时刻，生成、模型响应与邮件投递耗时意味着不能保证 09:00:00 到达。
+
+手动执行时，显式 `--date YYYY-MM-DD` 始终以该日期作为区间起始标签；`--date yesterday` 始终按进程启动时的配置时区取昨日，不会因 09:00 前后再次偏移。修改既有部署的 `timezone`、`day_start_hour` 或 `schedule.report_time` 后，需要重新安装 report timer；本文不表示线上配置已经更新。
 
 ```sh
 # install/update all server timers

@@ -9,7 +9,8 @@
 | reports_dir | HTML 报告输出目录，默认 `./reports` |
 | email.token_file | Gmail OAuth token JSON 路径，可使用绝对路径；文件需留在本地/部署环境并保持私密 |
 | email.to | `--send-email` 的收件人地址 |
-| timezone | 报告时区 |
+| timezone | 报告时区；缺省为 `Asia/Singapore` |
+| day_start_hour | 逻辑日开始小时；缺省为 `9`，即日报范围为当天 09:00 至次日 09:00 |
 | listen | 接收服务 host/port |
 | folders | 上传 type 到来源目录的映射 |
 | max_upload_bytes / max_uncompressed_bytes | 上传与解压读取大小 |
@@ -21,7 +22,7 @@
 | sources.todo | 缓存路径、client_id、authority、Graph 地址 |
 | activitywatch | 来源 URL、回看小时数、上传 URL |
 | schedule | 入库与 Todo 的运行秒数 |
-| schedule.report_time | 服务器日报触发时间（HH:MM，使用 timezone） |
+| schedule.report_time | 服务器日报触发时间（HH:MM，使用 timezone），缺省为 `09:00` |
 
 服务可用 SELF_HARNESS_CONFIG 指定配置路径，CLI 使用 --config。凭据存放于配置指定的位置，Git 提交遵循项目 .gitignore。
 

@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from openai import OpenAI
 from .mail import send_report
+from interfaces.periods import DEFAULT_TIMEZONE
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -105,6 +106,12 @@ def _context_blocks(context, zone):
         except Exception:
             return iso[:5] if iso else "—"
 
+    def _local_hour(iso):
+        try:
+            return datetime.fromisoformat(iso).astimezone(ZoneInfo(zone)).strftime('%H:%M %z')
+        except Exception:
+            return iso or "—"
+
     def _bar_chart(items, unit, max_items=8):
         items = [(n, v, s) for n, v, s in items if v and v > 0][:max_items]
         if not items:
@@ -129,6 +136,7 @@ def _context_blocks(context, zone):
     sl = context.get('sleep', {})
     ss = sl.get('summary', {})
     sc = sl.get('comparison', {}).get('metrics', {})
+    comparison_label = "前日" if sl.get('level') == 'day' else "上一周期"
 
     hours = ss.get('daily_average_hours')
     blocks['SLEEP_STAT'] = f"{hours:.1f} h" if hours is not None else "—"
@@ -137,9 +145,9 @@ def _context_blocks(context, zone):
     chg  = sc.get('daily_average_hours', {}).get('change')
     if chg is not None and prev is not None:
         sign = "↑" if chg > 0 else "↓"
-        blocks['SLEEP_CHANGE'] = f"{sign} {abs(chg):.1f}h  ·  前日 {prev:.1f}h"
+        blocks['SLEEP_CHANGE'] = f"{sign} {abs(chg):.1f}h  ·  {comparison_label} {prev:.1f}h"
     else:
-        blocks['SLEEP_CHANGE'] = "无前日对比"
+        blocks['SLEEP_CHANGE'] = f"无{comparison_label}对比"
 
     stages = ss.get('stages') or []
     total_h = sum(st.get('hours', 0) for st in stages) or 1
@@ -160,6 +168,10 @@ def _context_blocks(context, zone):
         blocks['SLEEP_SESSIONS'] = '\n'.join(tags)
     else:
         blocks['SLEEP_SESSIONS'] = '<span class="empty">无记录</span>'
+    ongoing = ss.get('ongoing_sessions') or []
+    blocks['SLEEP_INCOMPLETE'] = ''.join(
+        f'<p class="notice">截至统计截止时仍在进行：{_local(s.get("start",""))}–{_local(s.get("end",""))}，已记录 {s.get("sleep_hours",0):.1f}h；不计入完整昨夜睡眠。</p>'
+        for s in ongoing)
 
     # ── PC ─────────────────────────────────────────────────────────────────
     pc  = context.get('pc_screen_time', {})
@@ -179,7 +191,7 @@ def _context_blocks(context, zone):
     pc_prev = pcc.get('daily_average_minutes', {}).get('previous')
     if pc_chg is not None and pc_prev is not None:
         sign = "↑" if pc_chg > 0 else "↓"
-        blocks['PC_CHANGE'] = f"{sign} {abs(pc_chg):.0f}min  ·  前日 {pc_prev:.0f}min"
+        blocks['PC_CHANGE'] = f"{sign} {abs(pc_chg):.0f}min  ·  {comparison_label} {pc_prev:.0f}min"
     else:
         blocks['PC_CHANGE'] = ""
 
@@ -187,6 +199,17 @@ def _context_blocks(context, zone):
     blocks['PC_BARS'] = _bar_chart(
         [(a['name'], a.get('minutes', 0), a.get('share', 0)) for a in acts], 'min', max_items=5
     )
+    hours = ps.get('hourly') or []
+    if hours:
+        peak=max((h.get('minutes',0) for h in hours),default=1) or 1
+        blocks['PC_HOURLY']=''.join(
+            f'<div class="hour" title="{escape(_local_hour(h["start"]))} · {h.get("minutes",0):.0f} min"><span style="height:{max(4,h.get("minutes",0)/peak*100):.0f}%"></span><small>{_local_hour(h["start"])}</small></div>'
+            for h in hours)
+        busiest=max(hours,key=lambda h:h.get('minutes',0))
+        blocks['PC_DETAIL']=f'峰值时段 {_local_hour(busiest["start"])} · {busiest.get("minutes",0):.0f} min'
+    else:blocks['PC_HOURLY']='<p class="empty">无可用小时活动</p>'
+    if not hours:blocks['PC_DETAIL']='无可用小时活动'
+    blocks['PC_NOTE']='统计范围内的活跃窗口，按事件与小时的实际交集计算。'
 
     # ── IPHONE ─────────────────────────────────────────────────────────────
     ip  = context.get('iphone_screen_time', {})
@@ -206,7 +229,7 @@ def _context_blocks(context, zone):
     ip_prev = ipc.get('daily_average_minutes', {}).get('previous')
     if ip_chg is not None and ip_prev is not None:
         sign = "↑" if ip_chg > 0 else "↓"
-        blocks['IPHONE_CHANGE'] = f"{sign} {abs(ip_chg):.0f}min  ·  前日 {ip_prev:.0f}min"
+        blocks['IPHONE_CHANGE'] = f"{sign} {abs(ip_chg):.0f}min  ·  {comparison_label} {ip_prev:.0f}min"
     else:
         blocks['IPHONE_CHANGE'] = ""
 
@@ -214,6 +237,14 @@ def _context_blocks(context, zone):
     blocks['IPHONE_BARS'] = _bar_chart(
         [(a.get('app', '?'), a.get('minutes', 0), a.get('share', 0)) for a in apps], 'min', max_items=5
     )
+    coverage=ips.get('coverage') or {}
+    blocks['IPHONE_QUALIFIER']=''
+    blocks['IPHONE_NOTE'] = ('iPhone 按每日 09:00 与 24:00 附近的累计快照计算。'
+                             + (f' {coverage.get("reason")}' if coverage.get('reason') else ''))
+    daily=ips.get('daily') or []
+    covered_from=coverage.get('covered_from');covered=coverage.get('covered_to')
+    blocks['IPHONE_DETAIL']=(f'快照约覆盖 {_local(covered_from)}→{_local(covered)}' if covered_from and covered else
+                             (f'{len(daily)} 个逻辑日快照' if daily else '无可用累计快照'))
 
     # ── WEIGHT ─────────────────────────────────────────────────────────────
     wt  = context.get('weight', {})
@@ -223,19 +254,27 @@ def _context_blocks(context, zone):
     mean = ws.get('mean')
     unit = ws.get('unit') or 'kg'
     blocks['WEIGHT_STAT'] = f"{mean:.1f}" if mean is not None else "—"
+    blocks['WEIGHT_UNIT'] = escape(str(unit))
 
     wt_chg = wtc.get('mean', {}).get('change')
     if wt_chg is not None:
         sign = "↑" if wt_chg > 0 else "↓"
         blocks['WEIGHT_CHANGE'] = f"{sign} {abs(wt_chg):.2f} {unit}"
     else:
-        blocks['WEIGHT_CHANGE'] = "无前日对比" if mean is not None else ""
+        blocks['WEIGHT_CHANGE'] = f"无{comparison_label}对比" if mean is not None else ""
 
     mn, mx = ws.get('min'), ws.get('max')
     if mn is not None and mx is not None and mn != mx:
         blocks['WEIGHT_RANGE'] = f"范围 {mn:.1f} – {mx:.1f} {unit}"
     else:
         blocks['WEIGHT_RANGE'] = unit if mean is not None else "今日无记录"
+    count=ws.get('measurement_count')
+    last=ws.get('last')
+    details=[]
+    if count is not None:details.append(f'{count} 次测量')
+    if last is not None:details.append(f'末次 {last:.1f} {escape(str(unit))}')
+    blocks['WEIGHT_DETAILS']=' · '.join(details) if details else '统计范围内无测量'
+    blocks['WEIGHT_NOTE']='主指标为统计范围内测量均值；范围与末次值分别列示。'
 
     # ── TODO ───────────────────────────────────────────────────────────────
     td = context.get('todo', {})
@@ -251,6 +290,16 @@ def _context_blocks(context, zone):
     blocks['TODO_PENDING_COUNT']   = str(pending_count)
     blocks['TODO_APPEARED_COUNT']  = f"+{appeared_count}" if appeared_count else "0"
     blocks['TODO_STALLED_COUNT']   = str(stalled) if stalled is not None else "—"
+    tdc=td.get('comparison',{}).get('metrics',{}).get('daily_average_completed',{})
+    todo_change=tdc.get('change');todo_previous=tdc.get('previous')
+    if todo_change is not None and todo_previous is not None:
+        sign='↑' if todo_change>0 else '↓'
+        blocks['TODO_CHANGE']=f'{sign} {abs(todo_change):.1f} · {comparison_label} {todo_previous:.1f}'
+    else:blocks['TODO_CHANGE']=f'无{comparison_label}对比'
+    blocks['TODO_NOTE']='完成按完成时间归属；待办为统计范围内最后一次快照状态。'
+    blocks['TODO_GROUPS']=_bar_chart(
+        [(x.get('list_name','未命名清单'),x.get('count',0),x.get('share',0)) for x in ts.get('completed_by_list',[])],
+        '项',max_items=4)
 
     completed_tasks = ts.get('completed_tasks') or []
     if completed_tasks:
@@ -270,12 +319,16 @@ def _context_blocks(context, zone):
     return blocks
 
 
-def _render(result, context, zone):
+def _render(result, context, zone, generated_at=None):
     template = (HERE / "templates" / "report.html").read_text(encoding="utf-8")
     obs = result["observations"]
+    period=next((item.get('period') for item in context.values() if item.get('period')), {})
+    def stamp(value):
+        return datetime.fromisoformat(value).astimezone(ZoneInfo(zone)).strftime('%Y-%m-%d %H:%M') if value else '—'
+    generated_at=generated_at or datetime.now(ZoneInfo(zone)).isoformat()
     values: dict = {
         "TITLE":          escape(result["title"]),
-        "PERIOD_LABEL":   escape(result["period_label"]),
+        "PERIOD_LABEL":   escape(periods_label if (periods_label:=period.get('start','')[:10]) else result["period_label"]),
         "SUMMARY":        escape(result["summary"]),
         "INSIGHT_SLEEP":  escape(obs["sleep"]),
         "INSIGHT_WEIGHT": escape(obs["weight"]),
@@ -284,6 +337,10 @@ def _render(result, context, zone):
         "INSIGHT_IPHONE": escape(obs["iphone_usage"]),
         "CHANGES":        _change_items(result["changes"]),
         "RECOMMENDATIONS": _recommendation_items(result["recommendations"]),
+        "PERIOD_START": stamp(period.get('start')),
+        "PERIOD_END": stamp(period.get('end')),
+        "TIMEZONE": escape(zone),
+        "GENERATED_AT": stamp(generated_at),
     }
     values.update(_context_blocks(context, zone))
     return re.sub(r"\{\{([A-Z_]+)\}\}", lambda m: values.get(m.group(1), ""), template)
@@ -323,7 +380,7 @@ def run(config_path, level, date) -> Path:
     config_path = Path(config_path).resolve()
     config = json.loads(config_path.read_text(encoding="utf-8"))
     if date == "yesterday":
-        date = (datetime.now(ZoneInfo(config.get("timezone", "UTC"))).date()
+        date = (datetime.now(ZoneInfo(config.get("timezone", DEFAULT_TIMEZONE))).date()
                 - timedelta(days=1)).isoformat()
     if CalendarDate.fromisoformat(date).isoformat() != date:
         raise ValueError("日期必须使用 YYYY-MM-DD 格式")
@@ -362,7 +419,7 @@ def run(config_path, level, date) -> Path:
     else:
         raise RuntimeError(f"DeepSeek 报告生成失败（3次重试）：{str(last_exc).replace(key, '[REDACTED]')}") from last_exc
 
-    html = _render(result, context, config.get('timezone', 'UTC'))
+    html = _render(result, context, config.get('timezone', DEFAULT_TIMEZONE))
     reports_dir = Path(config.get("reports_dir", "./reports"))
     if not reports_dir.is_absolute():
         reports_dir = config_path.parent / reports_dir

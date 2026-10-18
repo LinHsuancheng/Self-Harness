@@ -5,6 +5,8 @@ from zoneinfo import ZoneInfo
 
 LEVELS=('day','week','month','quarter','halfyear','year')
 MONTHS={'month':1,'quarter':3,'halfyear':6,'year':12}
+DEFAULT_TIMEZONE='Asia/Singapore'
+DEFAULT_DAY_START_HOUR=9
 
 
 def local(value, zone):
@@ -20,7 +22,7 @@ def shift_month(value, count):
     return value.replace(year=year,month=month,day=min(value.day,calendar.monthrange(year,month)[1]))
 
 
-def bounds(level, anchor, zone, day_start_hour=0):
+def bounds(level, anchor, zone=DEFAULT_TIMEZONE, day_start_hour=DEFAULT_DAY_START_HOUR):
     start=local(anchor,zone).replace(hour=day_start_hour,minute=0,second=0,microsecond=0)
     if level=='day':end=start+timedelta(days=1)
     elif level=='week':
@@ -41,7 +43,7 @@ def previous(start, end, level, zone):
     return (start-delta).isoformat(),start.isoformat()
 
 
-def buckets(start, end, level, zone, day_start_hour=0):
+def buckets(start, end, level, zone=DEFAULT_TIMEZONE, day_start_hour=DEFAULT_DAY_START_HOUR):
     current,upper=local(start,zone),local(end,zone)
     result=[]
     while current<upper:
@@ -55,8 +57,26 @@ def buckets(start, end, level, zone, day_start_hour=0):
     return result
 
 
-def days(start,end,zone,day_start_hour=0):
+def days(start,end,zone=DEFAULT_TIMEZONE,day_start_hour=DEFAULT_DAY_START_HOUR):
     return buckets(start,end,'week',zone,day_start_hour)
+
+
+def logical_date(value,zone,day_start_hour=DEFAULT_DAY_START_HOUR):
+    """Date label for a reporting day that begins at day_start_hour."""
+    value=local(value,zone)
+    return (value-timedelta(days=1) if value.hour<day_start_hour else value).date().isoformat()
+
+
+def hourly(start,end,zone):
+    """Real one-hour spans, including distinct repeated DST hours."""
+    current=local(start,zone).astimezone(timezone.utc)
+    upper=local(end,zone).astimezone(timezone.utc)
+    result=[]
+    while current<upper:
+        following=min(current+timedelta(hours=1),upper)
+        result.append((current.astimezone(ZoneInfo(zone)).isoformat(),following.astimezone(ZoneInfo(zone)).isoformat()))
+        current=following
+    return result
 
 
 def seconds(start,end):
