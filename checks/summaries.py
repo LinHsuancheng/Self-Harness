@@ -32,7 +32,9 @@ with tempfile.TemporaryDirectory() as directory:
     put('pc_screen_time','p.gz',json.dumps({'start':start,'end':end,'duration_unit':'seconds','buckets':buckets}))
     for i,observed in enumerate(('2026-10-12T23:00:00+08:00','2026-10-13T20:00:00+08:00')):
         task={'id':'t','title':'Ship operator','status':'notStarted' if i==0 else 'completed'}
-        if i:task['completedDateTime']={'dateTime':'2026-10-13T10:00:00.0000000','timeZone':'UTC'}
+        if i:
+            task['createdDateTime']='2026-10-13T09:30:00+00:00'
+            task['completedDateTime']={'dateTime':'2026-10-13T10:00:00.0000000','timeZone':'UTC'}
         tasks=[{'task':task,'checklist':[]}]
         if i:
             tasks.append({'task':{'id':'p','title':'Plan next sprint','status':'notStarted','importance':'high',
@@ -49,7 +51,9 @@ with tempfile.TemporaryDirectory() as directory:
     assert len(pc['activities'])==2 and sum(site['minutes'] for site in pc['activities'])==60
     assert pc['activities'][0]['topics']==['Reading']
     todo=summarize(config,'todo',start,end)['summary']
-    assert todo['completed_count']==1 and todo['pending_count']==1
+    assert todo['created_count']==1 and todo['created_tasks'][0]['title']=='Ship operator'
+    assert todo['completed_count']==1 and todo['completed_tasks'][0]['created_at']=='2026-10-13T09:30:00+00:00'
+    assert todo['pending_count']==1
     assert todo['pending_tasks']==[{'list_id':'l','list_name':'l','title':'Plan next sprint','status':'notStarted','importance':'high','due':'2026-10-15T00:00:00.0000000'}]
     result=context(config,start,end)
     assert all('summary' in item and 'materials' not in item for item in result.values())

@@ -104,7 +104,7 @@ def todo(rows, baseline, start, end, following=None):
                                       'importance':task.get('importance'),
                                       'due':(task.get('dueDateTime') or {}).get('dateTime')})
     snapshots += [following] if following else []
-    completed={};appeared=set();disappeared=set();changed=set()
+    completed={};created={};appeared=set();disappeared=set();changed=set()
     previous={}
     for index,snapshot in enumerate(snapshots):
         tasks={(lst['list']['id'],entry['task']['id']):entry['task']
@@ -115,6 +115,13 @@ def todo(rows, baseline, start, end, following=None):
             disappeared.update(previous.keys()-tasks.keys())
             changed.update(key for key in tasks.keys()&previous.keys() if tasks[key]!=previous[key])
         for key,task in tasks.items():
+            created_at=task.get('createdDateTime')
+            if isinstance(created_at,dict):created_at=created_at.get('dateTime')
+            if created_at:
+                created_time=datetime.fromisoformat(created_at.replace('Z','+00:00'))
+                if lower<=created_time<upper:
+                    created[key]={'list_id':key[0],'task_id':key[1],'title':task.get('title'),
+                                  'created_at':created_time.isoformat()}
             if task.get('status')!='completed':continue
             completion=task.get('completedDateTime')
             if completion:
@@ -128,9 +135,10 @@ def todo(rows, baseline, start, end, following=None):
                 continue
             if lower<=time<upper:
                 completed[key]={'list_id':key[0],'task_id':key[1],'title':task.get('title'),
-                                'completed_at':time.isoformat()}
+                                'created_at':created_at,'completed_at':time.isoformat()}
         previous=tasks
-    return {'completed_count':len(completed),'completed_tasks':list(completed.values()),
+    return {'created_count':len(created),'created_tasks':list(created.values()),
+            'completed_count':len(completed),'completed_tasks':list(completed.values()),
             'pending_count':pending,'pending_tasks':pending_tasks,
             'appeared_count':len(appeared),'disappeared_count':len(disappeared),'changed_count':len(changed)}
 
