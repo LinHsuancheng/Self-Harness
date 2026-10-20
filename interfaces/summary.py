@@ -85,6 +85,18 @@ def pc(config, start, end, active_time):
     return {'total_minutes':round(sum(totals.values()),3),'apps':distribution(totals),'hourly':hourly}
 
 
+def completion(task):
+    """Return (instant, date_only); To Do drops the clock, leaving midnight stamps."""
+    value=task.get('completedDateTime')
+    if not isinstance(value,dict) or not value.get('dateTime'):return None,False
+    stamp=datetime.fromisoformat(value['dateTime'].replace('Z','+00:00'))
+    date_only=stamp.time()==datetime.min.time()
+    if stamp.tzinfo is None:
+        zone={'China Standard Time':'Asia/Shanghai','Singapore Standard Time':'Asia/Singapore'}.get(value.get('timeZone'),value.get('timeZone'))
+        stamp=stamp.replace(tzinfo=ZoneInfo(zone))
+    return stamp,date_only
+
+
 def todo(rows, baseline, start, end, following=None):
     lower,upper=datetime.fromisoformat(start),datetime.fromisoformat(end)
     snapshots=([baseline] if baseline else [])+rows
@@ -123,19 +135,16 @@ def todo(rows, baseline, start, end, following=None):
                     created[key]={'list_id':key[0],'task_id':key[1],'title':task.get('title'),
                                   'created_at':created_time.isoformat()}
             if task.get('status')!='completed':continue
-            completion=task.get('completedDateTime')
-            if completion:
-                time=datetime.fromisoformat(completion['dateTime'].replace('Z','+00:00'))
-                if time.tzinfo is None:
-                    zone={'China Standard Time':'Asia/Shanghai','Singapore Standard Time':'Asia/Singapore'}.get(completion['timeZone'],completion['timeZone'])
-                    time=time.replace(tzinfo=ZoneInfo(zone))
-            elif key in previous and previous[key].get('status')!='completed':
-                time=observed
-            else:
-                continue
-            if lower<=time<upper:
+            stamp,date_only=completion(task)
+            if stamp is None:
+                if key not in previous or previous[key].get('status')=='completed':continue
+                stamp,date_only=observed,False
+            inside=lower.date()<=stamp.date()<upper.date() if date_only else lower<=stamp<upper
+            if inside:
                 completed[key]={'list_id':key[0],'task_id':key[1],'title':task.get('title'),
-                                'created_at':created_at,'completed_at':time.isoformat()}
+                                'created_at':created_at,'completed_at':None if date_only else stamp.isoformat(),
+                                'completed_on':stamp.date().isoformat() if date_only else None,
+                                'date_only':date_only}
         previous=tasks
     return {'created_count':len(created),'created_tasks':list(created.values()),
             'completed_count':len(completed),'completed_tasks':list(completed.values()),

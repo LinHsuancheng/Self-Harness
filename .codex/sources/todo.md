@@ -8,6 +8,8 @@ operator 返回完成数量及任务、列表完成分布、期初期末待办�
 
 完成统计按 completedDateTime 归属周期，额外读取报告期末之后第一份快照。任务状态变化使用相邻快照比较。
 
+实测 Graph 返回的 completedDateTime 只有日期精度：时间恒为 `00:00:00`，时区标记为 UTC，时分秒不在数据中。此类值按日期归属逻辑日，不做时刻换算，因此 `0-9` 点的完成仍属前一个逻辑日；材料以 `completed_at=null`、`completed_on` 和 `date_only` 表达日期精度。带真实时分秒的值仍按时刻归属。
+
 ```sh
 .venv/bin/python interface.py fetch todo
 .venv/bin/python interface.py fetch todo --login

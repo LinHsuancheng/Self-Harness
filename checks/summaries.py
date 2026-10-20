@@ -93,3 +93,38 @@ assert {x['app']:x['minutes'] for x in tomorrow['apps']}=={'App':50,'Browser':10
 missing=iphone_summary(phone_rows[1:3],'2026-10-13T09:00:00+08:00','2026-10-14T09:00:00+08:00','Asia/Singapore',9)
 assert missing['coverage']['incomplete'] is True and '缺少D日09点附近快照' in missing['coverage']['reason']
 print('PASS: iPhone logical-day snapshot deltas, app reset, boundary exclusion, coverage status')
+
+from interfaces.summary import todo as todo_summary
+def todo_row(observed,tasks):
+    return {'source':'todo','observed_at':observed,
+            'data':{'complete':True,'lists':[{'list':{'id':'l'},'tasks':[{'task':t,'checklist':[]} for t in tasks]}]}}
+def done(task_id,stamp):
+    return {'id':task_id,'title':'Night work','status':'completed',
+            'completedDateTime':{'dateTime':stamp,'timeZone':'UTC'}}
+window='2026-10-13T09:00:00+08:00','2026-10-14T09:00:00+08:00'
+date_only=todo_summary([todo_row('2026-10-14T08:30:00+08:00',[done('a','2026-10-13T00:00:00.0000000')])],None,*window)
+assert date_only['completed_count']==1
+assert date_only['completed_tasks'][0]['completed_on']=='2026-10-13'
+assert date_only['completed_tasks'][0]['completed_at'] is None
+assert date_only['completed_tasks'][0]['date_only'] is True
+next_day=todo_summary([todo_row('2026-10-14T08:30:00+08:00',[done('b','2026-10-14T00:00:00.0000000')])],None,*window)
+assert next_day['completed_count']==0
+instant=todo_summary([todo_row('2026-10-14T08:30:00+08:00',
+                               [done('c','2026-10-13T16:30:00.0000000'),done('d','2026-10-14T01:00:00.0000000')])],None,*window)
+assert [t['task_id'] for t in instant['completed_tasks']]==['c']
+assert instant['completed_tasks'][0]['date_only'] is False and instant['completed_tasks'][0]['completed_on'] is None
+print('PASS: date-only completion keeps its date, 0-9 falls in the previous logical day, real times stay instantaneous')
+
+with tempfile.TemporaryDirectory() as directory:
+    root=Path(directory)
+    config={'raw_dir':str(root/'raw'),'database_dir':str(root/'db'),'timezone':'Asia/Singapore',
+            'day_start_hour':9,'sources':{'todo':{}}}
+    path=root/'raw'/'todo'/'2026-10-13'/'a.gz'
+    path.parent.mkdir(parents=True,exist_ok=True)
+    path.write_bytes(gzip.compress(json.dumps({'complete':True,'observed_at':'2026-10-14T08:30:00+08:00',
+        'lists':[{'list':{'id':'l'},'tasks':[{'task':done('a','2026-10-13T00:00:00.0000000'),'checklist':[]}]}]}).encode()))
+    ingest(config,'todo')
+    quality=summarize(config,'todo',*window)
+    assert quality['summary']['completed_count']==1
+    assert quality['data_quality']['effective_dates']==['2026-10-13']
+print('PASS: date-only completion counted on its completion date in effective data')

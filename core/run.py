@@ -296,7 +296,7 @@ def _context_blocks(context, zone):
         sign='↑' if todo_change>0 else '↓'
         blocks['TODO_CHANGE']=f'{sign} {abs(todo_change):.1f} · {comparison_label} {todo_previous:.1f}'
     else:blocks['TODO_CHANGE']=f'无{comparison_label}对比'
-    blocks['TODO_NOTE']='完成按完成时间归属；待办为统计范围内最后一次快照状态。'
+    blocks['TODO_NOTE']='完成按完成时间归属；只有日期精度的完成按日期归属，0-9点仍属前一日。待办为统计范围内最后一次快照状态。'
     blocks['TODO_GROUPS']=_bar_chart(
         [(x.get('list_name','未命名清单'),x.get('count',0),x.get('share',0)) for x in ts.get('completed_by_list',[])],
         '项',max_items=4)

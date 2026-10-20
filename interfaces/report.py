@@ -57,11 +57,11 @@ def quality(source, rows, start, end, zone, completed=(), day_start_hour=0):
     daily=periods.days(start,end,zone,day_start_hour)
     intervals=coverage(source,rows,start,end)
     observed={periods.logical_date(r['observed_at'],zone,day_start_hour) for r in rows} if source not in ('sleep','pc_screen_time') else set()
-    observed.update(periods.logical_date(c['completed_at'],zone,day_start_hour) for c in completed)
+    observed.update(c.get('completed_on') or periods.logical_date(c['completed_at'],zone,day_start_hour) for c in completed)
     for x,y in daily:
         if any(intersect(a,b,time(x),time(y)) for a,b in intervals):observed.add(periods.logical_date(x,zone,day_start_hour))
     dates=sorted(observed)
-    points=[time(r['observed_at']) for r in rows]+[time(c['completed_at']) for c in completed]
+    points=[time(r['observed_at']) for r in rows]+[time(c['completed_at']) for c in completed if c.get('completed_at')]
     return {'record_count':len(rows),'calendar_days':len(daily),'effective_days':len(dates),
             'effective_dates':dates,'day_coverage':round(len(dates)/len(daily),4) if daily else 0,
             'time_coverage':round(duration(intervals)/(time(end)-time(start)).total_seconds(),4) if source in ('sleep','pc_screen_time') else None,
