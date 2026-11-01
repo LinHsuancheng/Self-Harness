@@ -15,7 +15,7 @@ def load_config(filename):
     config['raw_dir'] = str((path.parent / config.get('raw_dir',config.get('data_dir','raw'))).resolve())
     config['database_dir'] = str((path.parent / config['database_dir']).resolve())
     for settings in config['sources'].values():
-        for key in ('raw_dir','cache_file'):
+        for key in ('raw_dir','cache_file','capture_dir'):
             if key in settings:
                 settings[key] = str((path.parent / settings[key]).resolve())
     config.setdefault('schedule',{}).setdefault('report_time','09:00')

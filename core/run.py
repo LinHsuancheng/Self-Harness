@@ -97,6 +97,26 @@ def _recommendation_items(recommendations):
     )
 
 
+def _select_pc_context(context, config):
+    """Keep exactly one PC source: screenshot activity when it has enough samples."""
+    candidate = context.get('pc_screen_activity')
+    if isinstance(candidate, dict) and (candidate.get('summary') or {}).get('daily_average_minutes') is not None:
+        settings = (config.get('sources') or {}).get('pc_screen_activity') or {}
+        minimum = int(settings.get('report_min_samples', 0))
+        if (candidate.get('data_quality') or {}).get('record_count', 0) >= minimum:
+            context.pop('pc_screen_time', None)
+            return
+    context.pop('pc_screen_activity', None)
+
+
+def _pc_context(context):
+    """Prefer screenshot activity when it has actual data, else fall back to ActivityWatch."""
+    candidate = context.get('pc_screen_activity')
+    if isinstance(candidate, dict) and (candidate.get('summary') or {}).get('daily_average_minutes') is not None:
+        return candidate, 'pc_screen_activity'
+    return context.get('pc_screen_time') or candidate or {}, 'pc_screen_time'
+
+
 def _context_blocks(context, zone):
     """Generate HTML data visualization blocks from raw interface context."""
 
@@ -174,7 +194,7 @@ def _context_blocks(context, zone):
         for s in ongoing)
 
     # ── PC ─────────────────────────────────────────────────────────────────
-    pc  = context.get('pc_screen_time', {})
+    pc, pc_source = _pc_context(context)
     ps  = pc.get('summary', {})
     pcc = pc.get('comparison', {}).get('metrics', {})
 
@@ -209,7 +229,11 @@ def _context_blocks(context, zone):
         blocks['PC_DETAIL']=f'峰值时段 {_local_hour(busiest["start"])} · {busiest.get("minutes",0):.0f} min'
     else:blocks['PC_HOURLY']='<p class="empty">无可用小时活动</p>'
     if not hours:blocks['PC_DETAIL']='无可用小时活动'
-    blocks['PC_NOTE']='统计范围内的活跃窗口，按事件与小时的实际交集计算。'
+    if pc_source=='pc_screen_activity':
+        sample=ps.get('sample_minutes',5)
+        blocks['PC_NOTE']=f'按每 {sample:g} 分钟截图采样折算；空闲样本计入覆盖但不计入活跃分钟，敏感截图只保留分类。'
+    else:
+        blocks['PC_NOTE']='统计范围内的活跃窗口，按事件与小时的实际交集计算。'
 
     # ── IPHONE ─────────────────────────────────────────────────────────────
     ip  = context.get('iphone_screen_time', {})
@@ -420,6 +444,9 @@ def run(config_path, level, date) -> Path:
     context = json.loads(completed.stdout)
     if not isinstance(context, dict):
         raise ValueError("interface context 未返回来源对象")
+    # Send exactly one PC source to the model. The screenshot source takes over
+    # once it has enough samples; until then keep the ActivityWatch baseline.
+    _select_pc_context(context, config)
 
     load_dotenv(ROOT / ".env")
     key = os.getenv("DEEPSEEK_API_KEY")

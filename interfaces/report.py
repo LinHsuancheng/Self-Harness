@@ -102,7 +102,7 @@ def following(rows,end):
     return next((r for r in rows if time(r['observed_at'])>=time(end)),None)
 
 
-def calculate(config,source,rows,start,end,sessions=()):
+def calculate(config,source,rows,start,end,sessions=(),level='day'):
     from . import operator
     selected=clip(rows,start,end);zone=config.get('timezone',periods.DEFAULT_TIMEZONE)
     if source=='weight':result=summary.weight(selected,select_baseline(rows,start))
@@ -140,6 +140,10 @@ def calculate(config,source,rows,start,end,sessions=()):
         for app in activity['apps']:totals[app['app']]+=app['active_duration']/60
         sites=operator.web_activity(config,start,end,selected,precision=9)
         result={'total_minutes':round(sum(totals.values()),6),'apps':[{'app':name,'minutes':minutes} for name,minutes in totals.items()],'websites':sites}
+    elif source=='pc_screen_activity':
+        result=summary.screen_activity(selected,start,end,zone,
+                                       config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR),
+                                       config['sources'][source],include_hourly=level=='day')
     else:
         result=summary.todo(selected,select_baseline(rows,start),start,end,following(rows,end))
         initial=select_baseline(rows,start)
@@ -159,7 +163,7 @@ def calculate(config,source,rows,start,end,sessions=()):
         result['attributed_sleep_hours']=round(sum(s['sleep_hours'] for s in owned),3)
     count=q['effective_days']
     if source=='sleep':result['daily_average_hours']=round(result['attributed_sleep_hours']/count,3) if count else None
-    elif source in ('iphone_screen_time','pc_screen_time'):result['daily_average_minutes']=round(result['total_minutes']/count,3) if count else None
+    elif source in ('iphone_screen_time','pc_screen_time','pc_screen_activity'):result['daily_average_minutes']=round(result['total_minutes']/count,3) if count else None
     elif source=='todo':result['daily_average_completed']=round(result['completed_count']/count,3) if count else None
     has_data=bool(selected or owned) if source=='sleep' else bool(count)
     if not has_data:
@@ -211,8 +215,14 @@ def display(config,source,result,level):
             result['activities']=major
     elif source=='pc_screen_time':
         result.pop('apps',None);result.pop('websites',None);result['activities']=[]
+    elif source=='pc_screen_activity':
+        result['activities']=[dict(item,kind='category') for item in result.get('categories',[])]
+        if level!='day':
+            major=result['activities'][:10];rest=result['activities'][10:]
+            if rest:major.append({'kind':'other','name':'其他活动','minutes':round(sum(x['minutes'] for x in rest),3),'share':round(sum(x['share'] for x in rest),4)})
+            result['activities']=major
     if level!='day':
-        for key in ('sessions','daily'):result.pop(key,None)
+        for key in ('sessions','daily','hourly'):result.pop(key,None)
     return result
 
 
@@ -224,6 +234,7 @@ def comparison(source,current,prior,quality_current,quality_prior,start,end):
             change=round(value-previous,6) if isinstance(value,(int,float)) and isinstance(previous,(int,float)) else None
             metrics[key]={'current':value,'previous':previous,'change':change}
     distributions={'pc_screen_time':[('activities','name')],'iphone_screen_time':[('apps','app')],
+                   'pc_screen_activity':[('categories','name'),('apps','app'),('focus','focus')],
                    'sleep':[('stages','stage'),('sleep_start_distribution','time_band'),('wake_distribution','time_band')],
                    'todo':[('completed_by_list','list_name')]}.get(source,[])
     changes=[]
@@ -245,7 +256,7 @@ def report(config,source,start,end,level):
     rows=load(config,source,min(prior_start,start),max(prior_end,end))
     sessions=sleep_sessions(rows,config['sources'][source].get('summary',{}).get('session_gap_minutes',30)) if source=='sleep' else []
     def compute(a,b):
-        return calculate(config,source,rows,a,b,sessions)
+        return calculate(config,source,rows,a,b,sessions,level=level)
     current,q=compute(start,end)
     prior,pq=compute(prior_start,prior_end)
     trend=[]
@@ -266,7 +277,7 @@ def report(config,source,start,end,level):
             item,iq=compute(hour_start,hour_end)
             if iq['effective_days']:hourly.append({'start':hour_start,'end':hour_end,'minutes':item['total_minutes'],'observed_hours':iq['observed_hours']})
         current['hourly']=hourly
-    focus={'weight':'mean','sleep':'daily_average_hours','iphone_screen_time':'daily_average_minutes','pc_screen_time':'daily_average_minutes','todo':'daily_average_completed'}[source]
+    focus={'weight':'mean','sleep':'daily_average_hours','iphone_screen_time':'daily_average_minutes','pc_screen_time':'daily_average_minutes','pc_screen_activity':'daily_average_minutes','todo':'daily_average_completed'}[source]
     valid=[t for t in trend if t['summary'].get(focus) is not None]
     highlights=[]
     if valid:

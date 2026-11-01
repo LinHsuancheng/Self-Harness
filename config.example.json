@@ -12,6 +12,7 @@
     "sleep time": "sleep",
     "app-screen-time": "iphone_screen_time",
     "pc_screen_time": "pc_screen_time",
+    "screen_capture": "screen_capture",
     "todo": "todo"
   },
   "activitywatch": {
@@ -54,6 +55,32 @@
         }
       }
     },
+    "pc_screen_activity": {
+      "capture_dir": "./raw/screen_capture",
+      "sample_minutes": 5,
+      "report_min_samples": 24,
+      "category_names": {
+        "work": "工作/开发",
+        "study": "学习/阅读",
+        "communication": "沟通",
+        "entertainment": "娱乐/社交",
+        "utilities": "工具/自动化",
+        "other": "其他"
+      },
+      "focus_names": {
+        "deep": "深度",
+        "light": "轻度",
+        "distracted": "分散",
+        "idle": "空闲"
+      },
+      "analysis": {
+        "detail": "high",
+        "max_attempts": 3,
+        "batch_size": 20,
+        "max_output_tokens": 600,
+        "min_age_seconds": 5
+      }
+    },
     "todo": {
       "cache_file": "./auth/token_cache.json",
       "client_id": "169cbcb3-a5ca-4336-aa0f-2b192c319149",
@@ -64,6 +91,7 @@
   "schedule": {
     "ingest_seconds": 60,
     "todo_seconds": 3600,
+    "screen_analysis_seconds": 60,
     "report_time": "09:00"
   }
 }

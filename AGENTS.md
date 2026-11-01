@@ -30,6 +30,7 @@
 | 理解项目目标和工作流 | [README](README.md)、[架构概览](.codex/architecture/overview.md) |
 | 修改来源接口或接入来源 | [接口职责](.codex/architecture/interfaces.md)、[来源索引](.codex/sources/index.md)、对应来源文档 |
 | 处理上传与原始文件 | [手机上传约定](.codex/sources/mobile-upload.md)、[原始文件](.codex/data/raw.md) |
+| 修改 PC 截图观察或 ShareX | [PC 截图活动](.codex/sources/pc-screen-activity.md)、[调度](.codex/operations/scheduling.md) |
 | 修改解析和统一格式 | [材料格式](.codex/data/material.md)、对应来源文档 |
 | 修改数据库或入库 | [SQLite](.codex/data/database.md)、[修订与入库](.codex/implementation/ingestion.md) |
 | 修改 operator 与展示粒度 | [汇总操作](.codex/implementation/operators.md)、[活动粒度](.codex/implementation/activities.md) |

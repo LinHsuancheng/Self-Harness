@@ -9,6 +9,14 @@
 # PC 原始采集与上传
 .venv/bin/python ../automations/collect_activitywatch.py --config config.json
 
+# 服务器：处理待分析截图（默认 60 秒 timer 等价命令）
+.venv/bin/python screen_analyzer.py --config config.json
+# 只分析、不写 JSON、不删除图片，用于检查
+.venv/bin/python screen_analyzer.py --config config.json --dry-run --max-batch 1
+
+# Windows/WSL：上传 spool 中待处理的截图
+.venv/bin/python ../automations/upload_screenshots.py --config ../automations/screenshots.config.json
+
 # 月度五来源材料
 .venv/bin/python interface.py context --level month --date 2026-10-13
 
@@ -23,6 +31,7 @@
 
 # 单来源周期材料
 .venv/bin/python interface.py summarize sleep --level week --date 2026-10-13
+.venv/bin/python interface.py summarize pc_screen_activity --level day --date 2026-11-01
 
 # 明确指定范围
 .venv/bin/python interface.py context --level year \

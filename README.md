@@ -12,11 +12,11 @@ Self Harness 是一个个人工作流反馈系统：持续记录睡眠、体重�
 | 体重 | 体重范围、平均水平和变化 |
 | 任务 | 完成内容、待办数量和任务变化 |
 | iPhone 使用 | App 使用时长及分布 |
-| PC 使用 | 应用、网站与页面活动，以及时间投入 |
+| PC 屏幕 | 应用、屏幕内容类别、主题与专注状态；ActivityWatch 并行参考 |
 
 ## 工作流
 
-手机端定时上传睡眠、体重和 App 使用数据，PC 采集 ActivityWatch，服务器定时获取 Microsoft To Do。数据汇集到采集中心，保留原始文件并转成结构化记录。
+手机端定时上传睡眠、体重和 App 使用数据，PC 用 ShareX 每 5 分钟截图并由服务器生成结构化视觉分析，同时继续采集 ActivityWatch 作为并行参考；服务器定时获取 Microsoft To Do。数据汇集到采集中心，保留原始文件并转成结构化记录。
 
 各来源的 operator 将细粒度记录整理为周期统计。分析环节读取这些材料，结合历史生成报告，再通过邮件投递反馈。
 
@@ -53,6 +53,8 @@ flowchart LR
 已完成五个来源的采集、原始文件归档、结构化入库和多周期 operator，并部署了自动采集与入库任务。固定版本为 `operators-v0.1.0`。
 
 已实现 core 单次报告生成与可选 Gmail 投递：读取 interface 周期材料，经 DeepSeek 分析后渲染并保存 HTML 报告；显式添加 `--send-email` 后通过 Gmail OAuth 发送。代码已推送至 GitHub 并部署到 `/root/test-server`；服务器配置、授权、原始数据、数据库和 Python 环境保留在运行目录，采集服务持续运行。
+
+截图观察 `pc_screen_activity` 已实现：Windows 任务每 5 分钟触发 ShareX，WSL 上传 JPEG；服务器分析器调用 DeepSeek 视觉模型生成严格 JSON，写入 raw 后删除截图，parser 入库。日报在样本足够时优先使用截图活动，否则回退 ActivityWatch；旧源并行保留。合成图片已跑通上传、分析、入库、汇总与日报渲染检查。
 
 ## 开始使用与参与
 

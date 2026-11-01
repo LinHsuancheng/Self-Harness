@@ -152,6 +152,88 @@ def todo(rows, baseline, start, end, following=None):
             'appeared_count':len(appeared),'disappeared_count':len(disappeared),'changed_count':len(changed)}
 
 
+def screen_activity(rows, start, end, report_timezone, day_start_hour=9, settings=None, include_hourly=False):
+    """Aggregate 5-minute screenshot samples; idle samples are coverage, not active time."""
+    from . import periods
+    settings = settings or {}
+    sample = float(settings.get('sample_minutes', 5))
+    names = settings.get('category_names', {})
+    focus_names = settings.get('focus_names', {})
+    lower, upper = datetime.fromisoformat(start), datetime.fromisoformat(end)
+    ordered = sorted(rows, key=lambda row: row['observed_at'])
+    categories = defaultdict(float)
+    apps = defaultdict(float)
+    topics = defaultdict(float)
+    focus = defaultdict(float)
+    daily = defaultdict(float)
+    hours = []
+    if include_hourly:
+        for a, b in periods.hourly(start, end, report_timezone):
+            hours.append({'start': a, 'end': b, 'minutes': 0.0})
+    hourly = {item['start']: item for item in hours}
+    total = observed = idle = 0.0
+    captures = active_captures = sensitive_captures = 0
+    for index, row in enumerate(ordered):
+        analysis = row.get('data', {}).get('analysis')
+        if not isinstance(analysis, dict):
+            continue
+        current = datetime.fromisoformat(row['observed_at'])
+        following = (datetime.fromisoformat(ordered[index+1]['observed_at'])
+                     if index+1 < len(ordered) else None)
+        seconds = sample*60
+        if following is not None:
+            seconds = min(seconds, (following-current).total_seconds())
+        seconds = max(0.0, min(seconds, (upper-current).total_seconds()))
+        if not seconds:
+            continue
+        captures += 1
+        observed += seconds
+        is_idle = analysis.get('focus') == 'idle' or analysis.get('activity') == 'idle'
+        if is_idle:
+            idle += seconds
+        else:
+            total += seconds
+            active_captures += 1
+            minutes = seconds/60
+            categories[names.get(analysis.get('category'), analysis.get('category') or 'other')] += minutes
+            apps[analysis.get('app') or 'unknown'] += minutes
+            for topic in analysis.get('topics', []):
+                if isinstance(topic, str) and topic:
+                    topics[topic] += minutes
+        focus[focus_names.get(analysis.get('focus'), analysis.get('focus') or 'other')] += seconds/60
+        if analysis.get('sensitive'):
+            sensitive_captures += 1
+        day = periods.logical_date(row['observed_at'], report_timezone, day_start_hour)
+        if not is_idle:
+            daily[day] += seconds/60
+        if include_hourly:
+            key = periods.local(row['observed_at'], report_timezone).replace(
+                minute=0, second=0, microsecond=0).isoformat()
+            if key in hourly:
+                hourly[key]['minutes'] += 0 if is_idle else seconds/60
+
+    def distribution(counter, key):
+        amount = sum(counter.values())
+        return [{key: name, 'minutes': round(value, 3),
+                 'share': round(value/amount, 4) if amount else 0}
+                for name, value in sorted(counter.items(), key=lambda item: (-item[1], item[0]))[:10]]
+
+    return {'total_minutes': round(total/60, 3),
+            'observed_minutes': round(observed/60, 3),
+            'idle_minutes': round(idle/60, 3),
+            'captures': captures,
+            'active_captures': active_captures,
+            'sensitive_captures': sensitive_captures,
+            'sample_minutes': sample,
+            'categories': distribution(categories, 'name'),
+            'apps': distribution(apps, 'app'),
+            'topics': distribution(topics, 'topic'),
+            'focus': distribution(focus, 'focus'),
+            'daily': [{'date': day, 'minutes': round(minutes, 3)} for day, minutes in sorted(daily.items())],
+            'hourly': [{'start': item['start'], 'end': item['end'], 'minutes': round(item['minutes'], 3)}
+                       for item in hours]}
+
+
 def activities(report, settings):
     """Use websites as browser activities and applications as other activities."""
     options=settings.get('summary',{})

@@ -4,8 +4,10 @@
 | --- | --- | --- |
 | 服务器 | self-harness-ingest.timer | 60秒 |
 | 服务器 | self-harness-todo.timer | 3600秒 |
+| 服务器 | self-harness-screen-analysis.timer | 60秒 |
 | 服务器 | self-harness-report.timer | 每天 09:00（配置时区，示例/代码缺省） |
-| Windows PC | Self Harness ActivityWatch 任务 | 每小时 |
+| Windows PC | Self Harness ActivityWatch 任务 | 每小时（并行期保留） |
+| Windows PC | Self Harness Screenshot 任务 | 每 5 分钟 |
 
 服务器入库与 Todo 周期来自 schedule 配置；日报使用 `schedule.report_time` 和顶层 `timezone`。缺省在新加坡时间 09:00 触发，`--date yesterday` 生成昨日 09:00 至今日 09:00 的报告并发送。09:00 是触发时刻，生成、模型响应与邮件投递耗时意味着不能保证 09:00:00 到达。
 
@@ -28,6 +30,25 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\automations\install_a
 ```
 
 任务调用 `wsl.exe` 启动 `Ubuntu-24.04`，运行 `../automations/collect_activitywatch.py`；无需让 WSL 常驻。
+
+## 截图观察
+
+服务器截图分析由 `self-harness-screen-analysis.timer` 每 60 秒触发，service 的 `TimeoutStartSec=600` 允许批量处理积压；分析结果由 ingest timer 在下一分钟入库。
+
+Windows 截图任务每 5 分钟运行 `capture_screenshot.ps1`：先触发 ShareX `-silent -nohotkeys -ActiveMonitor -autoclose`，等待 spool 出现稳定图片，再调用 `wsl.exe` 运行 `upload_screenshots.py`。任务必须使用当前用户的**交互式**会话，否则无法截取桌面；执行上限 4 分钟，`MultipleInstances IgnoreNew` 防止重叠。积压超过 `max_pending_files` 时跳过新截图，只清积压。
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\automations\setup_sharex.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\automations\install_screenshot_task.ps1
+Start-ScheduledTask -TaskName 'Self Harness Screenshot'
+Get-ScheduledTaskInfo -TaskName 'Self Harness Screenshot'
+```
+
+ShareX 设置由 `setup_sharex.ps1` 合并，包括自定义截图目录、JPEG、只保存文件、关闭剪贴板/编辑器/提示音/托盘通知和文件名时间戳。卸载任务：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\automations\install_screenshot_task.ps1 -Unregister
+```
 
 ```sh
 journalctl -u self-harness-ingest.service -u self-harness-todo.service

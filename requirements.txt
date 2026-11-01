@@ -5,3 +5,4 @@ msal
 requests
 openai
 python-dotenv
+Pillow

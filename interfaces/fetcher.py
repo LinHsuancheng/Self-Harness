@@ -13,9 +13,13 @@ def files(config, source):
     root = Path(settings.get('raw_dir', Path(config['raw_dir']) / source))
     for path in sorted(root.rglob('*.gz'), key=lambda p: (p.stat().st_mtime_ns, str(p))):
         metadata_path = path.with_name(path.name+'.meta.json')
+        collected = None
         if metadata_path.exists():
-            collected = json.loads(metadata_path.read_text())['collected_at']
-        else:
+            try:
+                collected = json.loads(metadata_path.read_text())['collected_at']
+            except (OSError, ValueError, KeyError, TypeError):
+                collected = None
+        if not collected:
             collected = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()
         yield path, collected
 

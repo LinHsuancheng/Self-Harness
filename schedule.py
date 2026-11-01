@@ -50,13 +50,15 @@ if args.report_only:
     jobs=[]
 else:
     jobs=[('ingest','interface.py',' ingest',config['schedule']['ingest_seconds']),
-          ('todo','interface.py',' fetch todo',config['schedule']['todo_seconds'])]
+          ('todo','interface.py',' fetch todo',config['schedule']['todo_seconds']),
+          ('screen-analysis','screen_analyzer.py','',config.get('schedule',{}).get('screen_analysis_seconds',60))]
 units=[]
 for name,script,extra,seconds in jobs:
     if not isinstance(seconds,int) or seconds<1:
         raise ValueError('Schedule seconds must be positive integers')
     unit='self-harness-'+name
     command=f'{json.dumps(sys.executable)} {json.dumps(str(project/script))} --config {json.dumps(str(config_path))}{extra}'
+    timeout='TimeoutStartSec=600\n' if name=='screen-analysis' else ''
     service=f'''[Unit]
 Description=Self Harness {name}
 
@@ -65,7 +67,7 @@ Type=oneshot
 WorkingDirectory={project}
 ExecStart={command}
 UMask=0077
-'''
+{timeout}'''
     timer=f'''[Unit]
 Description=Self Harness {name} timer
 

@@ -3,7 +3,10 @@ import csv
 import io
 import json
 import math
+import re
 from datetime import datetime, timedelta, timezone
+
+from . import screen
 
 VERSION = '2'
 
@@ -103,4 +106,34 @@ def parse(source, content, collected_at, settings):
         observed = utc(envelope['observed_at'] if envelope else payload['observed_at'])
         return [record(source, observed, observed, collected_at,
                        {'lists': payload['lists'], 'complete': True}, version=observed)]
+    if source == 'pc_screen_activity':
+        captured = utc(payload.get('captured_at'))
+        if envelope and utc(envelope['observed_at']) != captured:
+            raise ValueError('Capture time disagrees with envelope')
+        capture = payload.get('capture')
+        if not isinstance(capture, dict):
+            raise ValueError('Capture metadata is missing')
+        sha = capture.get('sha256')
+        if not isinstance(sha, str) or not re.fullmatch(r'[0-9a-f]{64}', sha):
+            raise ValueError('Capture sha256 is invalid')
+        capture_id = captured+'|'+sha
+        if capture.get('id') != capture_id:
+            raise ValueError('Capture id disagrees with capture time and hash')
+        size = capture.get('bytes')
+        if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+            raise ValueError('Capture size is invalid')
+        image_format = capture.get('format')
+        if image_format not in ('jpeg', 'png', 'webp'):
+            raise ValueError('Capture format is invalid')
+        filename = capture.get('filename')
+        if filename is not None and not isinstance(filename, str):
+            raise ValueError('Capture filename is invalid')
+        analysis = screen.validate(payload.get('analysis'), settings.get('redact_sensitive', True))
+        data = {'captured_at': captured,
+                'capture': {'id': capture_id, 'sha256': sha, 'bytes': size,
+                            'format': image_format, 'filename': filename or ''},
+                'model': str(payload.get('model') or 'unknown'),
+                'prompt_version': str(payload.get('prompt_version') or 'unknown'),
+                'analysis': analysis}
+        return [record(source, capture_id, captured, collected_at, data, version=captured)]
     raise ValueError('Unsupported source: '+source)

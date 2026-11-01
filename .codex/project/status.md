@@ -16,4 +16,8 @@
 
 当前 GitHub `main` 已部署到服务器 `/root/test-server`；配置、授权、原始数据、数据库和 Python 环境仍在服务器，采集服务 active。服务器日报每日 06:00（Asia/Singapore）生成昨天报告并发送邮件。
 
-相关资源：[部署](../operations/deployment.md)、[历史](../history/index.md)。
+## 截图观察
+
+2026-11-01 本地实现 `pc_screen_activity`：Windows ShareX 每 5 分钟截图，WSL 上传，服务器 `screen_analyzer.py` 调用 DeepSeek 视觉模型生成 JSON 后删除图片，parser 入库，日报优先新源、样本不足回退 `pc_screen_time`。旧 ActivityWatch 继续采集，作为并行期对照。合成图片已跑通上传、分析、入库和汇总；线上部署与 ShareX 安装待执行。
+
+相关资源：[PC 截图活动](../sources/pc-screen-activity.md)、[部署](../operations/deployment.md)、[历史](../history/index.md)。
