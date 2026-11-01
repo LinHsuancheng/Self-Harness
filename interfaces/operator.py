@@ -19,7 +19,8 @@ def database(config, source):
 def ingest(config, source, retry_failed=False):
     settings = config['sources'][source]
     parse_settings={k:v for k,v in settings.items() if k not in (
-        'summary','browser_apps','analysis','category_names','focus_names','capture_dir','report_min_samples')}
+        'summary','browser_apps','analysis','category_names','focus_names','capture_dir',
+        'report_min_samples','sample_minutes')}
     version = parser.VERSION+'-'+hashlib.sha256(json.dumps(parse_settings,sort_keys=True).encode()).hexdigest()[:12]
     counts = {'success':0,'duplicate':0,'failed':0,'skipped':0}
     with closing(database(config, source)) as db:
