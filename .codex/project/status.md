@@ -18,6 +18,6 @@
 
 ## 截图观察
 
-2026-11-01 本地实现 `pc_screen_activity`：Windows ShareX 每 5 分钟截图，WSL 上传，服务器 `screen_analyzer.py` 调用 DeepSeek 视觉模型生成 JSON 后删除图片，parser 入库，日报优先新源、样本不足回退 `pc_screen_time`。旧 ActivityWatch 继续采集，作为并行期对照。合成图片已跑通上传、分析、入库和汇总；线上部署与 ShareX 安装待执行。
+2026-11-01 已实现并部署 `pc_screen_activity`：Windows ShareX 每 5 分钟截图，WSL 上传，服务器 `screen_analyzer.py` 调用 DeepSeek 视觉模型生成 JSON 后删除图片，parser 入库，日报优先新源、样本不足回退 `pc_screen_time`。旧 ActivityWatch 继续采集，作为并行期对照。ShareX 已安装并注册隐藏的 5 分钟任务（`wscript` + VBS + `CreateNoWindow`，不弹终端）；生产链路已连续处理多张截图，失败和待分析均为 0。
 
 相关资源：[PC 截图活动](../sources/pc-screen-activity.md)、[部署](../operations/deployment.md)、[历史](../history/index.md)。
