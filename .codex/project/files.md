@@ -11,7 +11,8 @@
 | ../automations/configure_sharex.py | 合并 ShareX ApplicationConfig（项目外） |
 | ../automations/setup_sharex.ps1 | 安装/配置 ShareX 并做一次截图验证（项目外） |
 | ../automations/capture_screenshot.ps1 | 每 5 分钟触发 ShareX 并调用 WSL 上传（项目外） |
-| ../automations/install_screenshot_task.ps1 | 注册 Windows 截图任务（项目外） |
+| ../automations/install_screenshot_task.ps1 | 注册 Windows 截图任务并生成隐藏 VBS（项目外） |
+| ../automations/run_screenshot_hidden.vbs | 由安装脚本生成，隐藏启动截图 PowerShell（项目外） |
 | interface.py | 获取、入库、查询与周期统计 CLI |
 | core/run.py | 获取周期材料、调用 DeepSeek、校验结构化报告并生成 HTML |
 | core/mail.py | 通过 Gmail OAuth 投递已保存的 HTML 报告 |

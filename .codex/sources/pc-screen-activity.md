@@ -73,6 +73,6 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\automations\setup_sha
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\automations\install_screenshot_task.ps1
 ```
 
-ShareX 配置由 `../automations/configure_sharex.py` 合并；上传器配置在 `../automations/screenshots.config.json`。任务必须以交互式用户会话运行，否则无法截取桌面。
+ShareX 配置由 `../automations/configure_sharex.py` 合并；上传器配置在 `../automations/screenshots.config.json`。任务必须以交互式用户会话运行，否则无法截取桌面。任务通过 `wscript.exe` + 生成的 `run_screenshot_hidden.vbs` 隐藏启动，避免每 5 分钟弹出 PowerShell/控制台窗口。
 
 相关资源：[原始文件](../data/raw.md)、[统一材料](../data/material.md)、[调度](../operations/scheduling.md)、[PC ActivityWatch](pc.md)。

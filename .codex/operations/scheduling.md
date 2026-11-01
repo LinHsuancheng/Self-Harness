@@ -37,6 +37,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\automations\install_a
 
 Windows 截图任务每 5 分钟运行 `capture_screenshot.ps1`：先触发 ShareX `-silent -nohotkeys -ActiveMonitor -autoclose`，等待 spool 出现稳定图片，再调用 `wsl.exe` 运行 `upload_screenshots.py`。任务必须使用当前用户的**交互式**会话，否则无法截取桌面；执行上限 4 分钟，`MultipleInstances IgnoreNew` 防止重叠。积压超过 `max_pending_files` 时跳过新截图，只清积压。
 
+任务动作不是直接启动 `powershell.exe`，而是 `wscript.exe //B //Nologo run_screenshot_hidden.vbs`；VBS 用窗口样式 0 启动 PowerShell，避免每 5 分钟闪出控制台，PowerShell 再调用 `wsl.exe`。VBS 由 `install_screenshot_task.ps1` 按当前脚本路径和发行版生成。
+
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\automations\setup_sharex.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ..\automations\install_screenshot_task.ps1
