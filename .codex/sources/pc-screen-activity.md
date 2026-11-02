@@ -39,13 +39,13 @@ Windows 任务计划（交互式用户会话，每 5 分钟）
 
 ## 采样口径
 
-每个截图视为 5 分钟样本，持续时间取 `min(sample_minutes, 下一张截图间隔, 周期结束)`。`focus=idle` 或 `activity=idle` 的样本计入覆盖和空闲分钟，不计入活跃分钟；分类、应用和主题只统计活跃样本。日报的有效日沿用 point-source 的观测日期，日均活跃分钟除以有效日。
+PC 活跃时间只使用 ActivityWatch 的 `not-afk ∩ currentwindow` 区间。每个截图先形成 `[截图时间, min(截图时间 + sample_minutes, 下一张截图, 周期结束))` 候选区间，再与 ActivityWatch 活跃区间求交；只有交集分钟可以获得截图类别、应用、主题和 focus。电脑保持开机但没有键鼠活动时，截图不会产生 PC 活跃分钟。
 
-截图是**语义精度**更高，不是时间分辨率更高：两次采样之间的行为可能遗漏，边界样本按样本窗口折算。日报的 PC 区注会明确“按每 5 分钟截图采样折算”。
+总 PC 分钟来自 ActivityWatch，截图已分类分钟来自上述交集，差额显示为“未分类活跃”。没有 ActivityWatch 覆盖时，截图仍是语义观测，但时长返回 `null`，不得回退为每张截图 5 分钟。截图是语义来源，不是时间真值；视觉模型的 focus 也不是认知专注测量。
 
 ## Computer-use Timeline
 
-日报将截图分析 JSON 直接整理为 `summary.timeline`，并在 PC 区域渲染行为时间线。每段包含开始、结束、折算分钟、类别、行为、主要专注状态、应用、主题、摘要、样本数和平均置信度。该过程复用已经生成的截图分析结果，不发起第二次模型调用。
+日报将与 ActivityWatch 活跃区间相交的截图分析 JSON 整理为 `summary.timeline`，并在 PC 区域渲染行为时间线。每段包含开始、结束、交集分钟、类别、行为、主要视觉 focus、应用、主题、摘要、样本数和平均置信度。该过程复用已经生成的截图分析结果，不发起第二次模型调用。
 
 时间线按观测时间排序。相邻样本间隔不超过 `sample_minutes` 时，连续空闲样本互相合并、连续敏感样本互相合并，其他样本只在 `category` 与 `activity` 同时相同时合并；语义变化、空闲/活跃转换或更长空档会开始新段。应用和主题按首次出现去重，摘要使用该段最后一个非空描述，专注状态取覆盖分钟最多的值。
 
@@ -61,7 +61,7 @@ Windows 任务计划（交互式用户会话，每 5 分钟）
 
 ## 与 pc_screen_time 并行
 
-ActivityWatch 的 `pc_screen_time` 继续采集和入库。日报在 `pc_screen_activity` 有足够样本（`report_min_samples`，默认 24）时使用新源，否则回退 `pc_screen_time`；只向模型发送一个 PC 来源。两套历史都保留，便于对照。
+ActivityWatch 的 `pc_screen_time` 是 PC 时间底座，截图活动是语义增强。日报在截图达到 `report_min_samples`（默认 24）且 ActivityWatch 有覆盖时，向模型发送融合后的 `pc_screen_activity`；否则直接使用 `pc_screen_time`。两套历史分别保留。
 
 ## 运行
 

@@ -3,6 +3,7 @@ import gzip
 import json
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -39,10 +40,10 @@ with tempfile.TemporaryDirectory() as directory:
     root = Path(directory)
     config = {'raw_dir': str(root/'raw'), 'database_dir': str(root/'db'),
               'timezone': 'Asia/Singapore', 'day_start_hour': 9,
-              'sources': {'pc_screen_activity': SETTINGS}}
+              'sources': {'pc_screen_activity': SETTINGS, 'pc_screen_time': {}}}
 
-    def put(name, value):
-        path = root/'raw'/'pc_screen_activity'/'2026-10-13'/name
+    def put(name, value, source='pc_screen_activity'):
+        path = root/'raw'/source/'2026-10-13'/name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(gzip.compress(json.dumps(value).encode()))
 
@@ -76,14 +77,33 @@ with tempfile.TemporaryDirectory() as directory:
     assert status(config, 'pc_screen_activity')['failed_files'] == 1
     assert status(config, 'pc_screen_activity')['successful_files'] >= 3
 
+    activitywatch = {
+        'start': '2026-10-13T09:00:00+08:00', 'end': '2026-10-14T09:00:00+08:00',
+        'duration_unit': 'seconds', 'buckets': [
+            {'bucket': {'id': 'afk', 'type': 'afkstatus', 'hostname': 'pc'}, 'events': [
+                {'id': 1, 'timestamp': '2026-10-13T10:02:00+08:00', 'duration': 300,
+                 'data': {'status': 'not-afk'}}]},
+            {'bucket': {'id': 'window', 'type': 'currentwindow', 'hostname': 'pc'}, 'events': [
+                {'id': 2, 'timestamp': '2026-10-13T10:02:00+08:00', 'duration': 300,
+                 'data': {'app': 'Code.exe', 'title': 'self-harness'}}]},
+        ]}
+    put('aw.json.gz', activitywatch, source='pc_screen_time')
+    ingest(config, 'pc_screen_time')
+
     report = summarize(config, 'pc_screen_activity', '2026-10-13T09:00:00+08:00',
                        '2026-10-14T09:00:00+08:00')
     assert report['data_quality']['effective_days'] == 1
-    assert report['summary']['daily_average_minutes'] == 15
+    assert report['summary']['daily_average_minutes'] == 5
+    assert report['summary']['activity_time_source'] == 'activitywatch'
+    assert report['summary']['classified_minutes'] == 5
+    assert report['summary']['unclassified_minutes'] == 0
+    assert report['summary']['daily'] == [{'date': '2026-10-13', 'minutes': 5}]
     assert report['summary']['activities'][0]['name'] == '工作/开发'
     assert report['summary']['sample_minutes'] == 5
-    assert len(report['summary']['timeline']) == 2
-    assert report['comparison']['metrics']['daily_average_minutes']['current'] == 15
+    assert len(report['summary']['timeline']) == 1
+    assert report['summary']['timeline'][0]['start'] == '2026-10-13T10:02:00+08:00'
+    assert report['summary']['timeline'][0]['end'] == '2026-10-13T10:07:00+08:00'
+    assert report['comparison']['metrics']['daily_average_minutes']['current'] == 5
     weekly = summarize(config, 'pc_screen_activity', '2026-10-13T09:00:00+08:00',
                        '2026-10-14T09:00:00+08:00', level='week')
     assert 'timeline' not in weekly['summary']
@@ -108,6 +128,34 @@ with tempfile.TemporaryDirectory() as directory:
     assert result['focus'][0]['minutes'] == 5
     assert result['daily'] == [{'date': '2026-10-13', 'minutes': 10}]
     assert len(result['hourly']) == 1 and result['hourly'][0]['minutes'] == 10
+
+    active_rows = [
+        {'source': 'pc_screen_activity', 'observed_at': f'2026-10-13T10:{minute:02d}:00+08:00',
+         'data': {'analysis': analysis()}}
+        for minute in (0, 5, 10)
+    ]
+    filtered = screen_activity(
+        active_rows, '2026-10-13T10:00:00+08:00', '2026-10-13T10:15:00+08:00',
+        'Asia/Singapore', 9, SETTINGS, include_timeline=True,
+        active_intervals=[(datetime.fromisoformat('2026-10-13T10:02:00+08:00'),
+                           datetime.fromisoformat('2026-10-13T10:07:00+08:00'))])
+    assert filtered['total_minutes'] == 5
+    assert filtered['timeline'] == [{
+        'start': '2026-10-13T10:02:00+08:00', 'end': '2026-10-13T10:07:00+08:00',
+        'minutes': 5, 'category': '工作/开发', 'activity': 'coding', 'focus': '深度',
+        'apps': ['Visual Studio Code'], 'topics': ['parser.py'],
+        'summary': '正在编辑解析器。', 'sample_count': 2, 'average_confidence': .9}]
+    split = screen_activity(
+        active_rows[:1], '2026-10-13T10:00:00+08:00', '2026-10-13T10:05:00+08:00',
+        'Asia/Singapore', 9, SETTINGS, include_timeline=True,
+        active_intervals=[
+            (datetime.fromisoformat('2026-10-13T10:00:00+08:00'),
+             datetime.fromisoformat('2026-10-13T10:01:00+08:00')),
+            (datetime.fromisoformat('2026-10-13T10:04:00+08:00'),
+             datetime.fromisoformat('2026-10-13T10:05:00+08:00'))])
+    assert [(item['start'], item['end'], item['minutes']) for item in split['timeline']] == [
+        ('2026-10-13T10:00:00+08:00', '2026-10-13T10:01:00+08:00', 1),
+        ('2026-10-13T10:04:00+08:00', '2026-10-13T10:05:00+08:00', 1)]
 
     timeline_rows = [
         {'source': 'pc_screen_activity', 'observed_at': '2026-10-13T10:00:00+08:00',
@@ -153,4 +201,52 @@ with tempfile.TemporaryDirectory() as directory:
     assert tail['total_minutes'] == 7, 'the last sample must be capped at the period end'
     assert tail['timeline'][-1]['end'] == '2026-10-13T10:12:00+08:00'
 
-print('PASS: screenshot identity, duplicate capture, sensitive redaction, aggregation, timeline and boundary cap')
+    put('no-aw.json.gz', envelope('2026-10-14T10:00:00+08:00', 'd'*64))
+    ingest(config, 'pc_screen_activity')
+    uncovered = summarize(config, 'pc_screen_activity', '2026-10-14T09:00:00+08:00',
+                          '2026-10-15T09:00:00+08:00')
+    assert uncovered['summary']['daily_average_minutes'] is None
+    assert uncovered['summary']['activity_time_available'] is False, uncovered['summary']
+    assert uncovered['summary']['timeline'] == []
+
+    aw_only = dict(activitywatch)
+    aw_only['start'] = '2026-10-15T09:00:00+08:00'
+    aw_only['end'] = '2026-10-16T09:00:00+08:00'
+    for bucket in aw_only['buckets']:
+        bucket['events'][0]['timestamp'] = '2026-10-15T10:00:00+08:00'
+        bucket['events'][0]['duration'] = 600
+        bucket['events'][0]['id'] += 10
+    put('aw-only.json.gz', aw_only, source='pc_screen_time')
+    ingest(config, 'pc_screen_time')
+    no_screenshots = summarize(config, 'pc_screen_activity', '2026-10-15T09:00:00+08:00',
+                               '2026-10-16T09:00:00+08:00')
+    assert no_screenshots['summary']['daily_average_minutes'] == 10
+    assert no_screenshots['summary']['classified_minutes'] == 0
+    assert no_screenshots['summary']['unclassified_minutes'] == 10
+    assert no_screenshots['summary']['daily'] == [{'date': '2026-10-15', 'minutes': 10}]
+    assert no_screenshots['trend'][0]['summary']['daily_average_minutes'] == 10
+
+    two_days = {
+        'start': '2026-10-16T09:00:00+08:00', 'end': '2026-10-18T09:00:00+08:00',
+        'duration_unit': 'seconds', 'buckets': [
+            {'bucket': {'id': 'afk-2d', 'type': 'afkstatus', 'hostname': 'pc'}, 'events': [
+                {'id': 21, 'timestamp': '2026-10-16T10:00:00+08:00', 'duration': 3600,
+                 'data': {'status': 'not-afk'}},
+                {'id': 22, 'timestamp': '2026-10-17T10:00:00+08:00', 'duration': 3600,
+                 'data': {'status': 'not-afk'}}]},
+            {'bucket': {'id': 'window-2d', 'type': 'currentwindow', 'hostname': 'pc'}, 'events': [
+                {'id': 23, 'timestamp': '2026-10-16T10:00:00+08:00', 'duration': 3600,
+                 'data': {'app': 'Code.exe'}},
+                {'id': 24, 'timestamp': '2026-10-17T10:00:00+08:00', 'duration': 3600,
+                 'data': {'app': 'Code.exe'}}]},
+        ]}
+    put('two-days.json.gz', two_days, source='pc_screen_time')
+    ingest(config, 'pc_screen_time')
+    multi = summarize(config, 'pc_screen_activity', '2026-10-16T09:00:00+08:00',
+                      '2026-10-18T09:00:00+08:00', level='day')
+    assert multi['summary']['daily_average_minutes'] == 60
+    assert multi['summary']['daily'] == [
+        {'date': '2026-10-16', 'minutes': 60},
+        {'date': '2026-10-17', 'minutes': 60}]
+
+print('PASS: screenshot identity, redaction, ActivityWatch fusion, timeline and boundary cap')

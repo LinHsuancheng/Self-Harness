@@ -1,6 +1,6 @@
 # PC ActivityWatch
 
-> 并行期说明：新的 [PC 截图活动](pc-screen-activity.md) 提供屏幕内容、主题和专注状态；日报在样本足够时优先使用它。ActivityWatch 继续采集和入库，作为旧口径与回退来源，历史数据保留。
+> 融合说明：[PC 截图活动](pc-screen-activity.md) 提供屏幕内容、主题和视觉 focus；ActivityWatch 的 `not-afk ∩ currentwindow` 始终是 PC 时间底座。截图样本不足或 ActivityWatch 无覆盖时，日报不使用截图估算时长。
 
 `../automations/collect_activitywatch.py` 从配置的 ActivityWatch 地址读取 AFK、窗口、浏览器三个事件流，保存 gzip JSON 并以 `type=pc_screen_time` 上传。
 

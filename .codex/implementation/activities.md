@@ -15,7 +15,7 @@ share 使用 PC 总活跃时长作为分母。浏览器时长分配到网站与�
 
 operator.web_activity 提供完整网站和页面统计；query 提供事件详情。
 
-`pc_screen_activity` 的 activities 来自截图分析类别（工作/开发、学习/阅读等），每项同样提供 kind、name、minutes、share。截图的应用、主题和专注状态保留在 summary 的 apps/topics/focus 中；空闲样本只进入空闲分钟和 focus 分布，不进入活跃分类。
+`pc_screen_activity` 的 activities 来自截图分析类别（工作/开发、学习/阅读等），但分钟只计算截图候选区间与 ActivityWatch 活跃区间的交集。每项提供 kind、name、minutes、share；share 以 ActivityWatch 总活跃分钟为分母。没有截图语义覆盖的 ActivityWatch 时间显示为“未分类活跃”。截图的应用、主题和视觉 focus 保留在 summary 的 apps/topics/focus 中。
 
 日报另外保留 `summary.timeline`，把连续的截图分析合并成 Computer-use Timeline，并直接显示行为摘要、应用和主题。周/月以上不携带 timeline，继续收敛为类别分布。
 

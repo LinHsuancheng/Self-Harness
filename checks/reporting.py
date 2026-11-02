@@ -34,9 +34,12 @@ assert "Computer-use Timeline" in html and "当前来源没有可用的行为时
 screen_context=dict(context)
 screen_context.pop("pc_screen_time")
 screen_context["pc_screen_activity"]={"level":"day","period":period,"data_quality":{"record_count":120},
-    "summary":{"daily_average_minutes":300,"sample_minutes":5,"activities":[
-        {"kind":"category","name":"工作/开发","minutes":300,"share":1.0},
-        {"kind":"category","name":"学习/阅读","minutes":120,"share":.4}],
+    "summary":{"daily_average_minutes":295,"total_minutes":295,"sample_minutes":5,
+        "activity_time_source":"activitywatch","activity_time_available":True,
+        "activitywatch_coverage_minutes":405,"classified_minutes":210,"unclassified_minutes":85,
+        "activities":[
+        {"kind":"category","name":"工作/开发","minutes":210,"share":.7119},
+        {"kind":"other","name":"未分类活跃","minutes":85,"share":.2881}],
         "timeline":[
             {"start":"2026-10-13T10:00:00+08:00","end":"2026-10-13T10:30:00+08:00",
              "minutes":30,"category":"工作/开发","activity":"coding","focus":"深度",
@@ -51,9 +54,11 @@ screen_context["pc_screen_activity"]={"level":"day","period":period,"data_qualit
              "apps":[],"topics":[],"summary":"敏感内容，已省略","sample_count":1,
              "average_confidence":.8}],
         "hourly":[{"start":"2026-10-13T10:00:00+08:00","minutes":30}]},
-    "comparison":{"metrics":{"daily_average_minutes":{"current":300,"previous":250,"change":50}}}}
+    "comparison":{"metrics":{"daily_average_minutes":{"current":295,"previous":250,"change":45}}}}
 screen_html=_render(validated,screen_context,"Asia/Singapore",generated_at="2026-10-14T09:00:03+08:00")
-assert "每 5 分钟截图采样折算" in screen_html and "300" in screen_html
+assert "ActivityWatch 的非 AFK 前台窗口" in screen_html and "截图仅提供行为语义" in screen_html
+assert "每 5 分钟截图采样折算" not in screen_html and "295" in screen_html
+assert "已分类 210 min · 未分类 85 min" in screen_html
 assert "Computer-use Timeline" in screen_html and "10:00–10:30" in screen_html
 assert "实现 &lt;timeline-xss&gt;" in screen_html and "<timeline-xss>" not in screen_html
 assert "Visual Studio Code · Terminal" in screen_html and "self-harness" in screen_html

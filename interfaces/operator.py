@@ -10,6 +10,31 @@ from . import fetcher, parser, summary
 from .database import Database
 
 
+def _merge_intervals(intervals):
+    merged = []
+    for begin, end in sorted(intervals):
+        if begin >= end:
+            continue
+        if merged and begin <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((begin, end))
+    return merged
+
+
+def _active_by_host(rows, lower, upper):
+    active = {}
+    for row in rows:
+        data = row['data']
+        if data['bucket_type'] != 'afkstatus' or data['details'].get('status') != 'not-afk':
+            continue
+        begin = max(lower, datetime.fromisoformat(data['start']))
+        end = min(upper, datetime.fromisoformat(data['end']))
+        if begin < end:
+            active.setdefault(data.get('hostname'), []).append((begin, end))
+    return {host: _merge_intervals(intervals) for host, intervals in active.items()}
+
+
 def database(config, source):
     if source not in config['sources']:
         raise ValueError('Source is not configured: '+source)
@@ -106,30 +131,37 @@ def todo_changes(config, start, end):
 def pc_active_time(config, start, end, rows=None):
     rows = query(config,'pc_screen_time',start,end) if rows is None else rows
     lower,upper = datetime.fromisoformat(parser.utc(start)),datetime.fromisoformat(parser.utc(end))
-    active = {}
-    for row in rows:
-        data = row['data']
-        if data['bucket_type']=='afkstatus' and data['details'].get('status')=='not-afk':
-            active.setdefault(data.get('hostname'),[]).append((datetime.fromisoformat(data['start']),datetime.fromisoformat(data['end'])))
+    active = _active_by_host(rows, lower, upper)
     totals = {}
     for row in rows:
         data = row['data']
         if data['bucket_type']!='currentwindow':
             continue
         begin,finish = datetime.fromisoformat(data['start']),datetime.fromisoformat(data['end'])
-        intervals = sorted((max(begin,a,lower),min(finish,b,upper)) for a,b in active.get(data.get('hostname'),[]) if max(begin,a,lower)<min(finish,b,upper))
-        merged = []
-        for a,b in intervals:
-            if merged and a<=merged[-1][1]:
-                merged[-1] = (merged[-1][0],max(merged[-1][1],b))
-            else:
-                merged.append((a,b))
+        merged = _merge_intervals((max(begin,a,lower),min(finish,b,upper))
+                                  for a,b in active.get(data.get('hostname'),[]))
         seconds = sum((b-a).total_seconds() for a,b in merged)
         if seconds:
             key=(data.get('hostname'),data['details'].get('app'))
             totals[key]=totals.get(key,0)+seconds
     return {'duration_unit':'seconds', 'apps':[{'hostname':host,'app':app,'active_duration':seconds} for (host,app),seconds in totals.items()],
             'afk_data_present':any(r['data']['bucket_type']=='afkstatus' for r in rows)}
+
+
+def pc_active_intervals(config, start, end, rows=None):
+    """Return merged not-AFK time covered by a foreground-window event."""
+    rows = query(config, 'pc_screen_time', start, end) if rows is None else rows
+    lower, upper = datetime.fromisoformat(parser.utc(start)), datetime.fromisoformat(parser.utc(end))
+    active = _active_by_host(rows, lower, upper)
+    spans = []
+    for row in rows:
+        data = row['data']
+        if data['bucket_type'] != 'currentwindow':
+            continue
+        begin = max(lower, datetime.fromisoformat(data['start']))
+        end = min(upper, datetime.fromisoformat(data['end']))
+        spans.extend((max(begin, a), min(end, b)) for a, b in active.get(data.get('hostname'), []))
+    return _merge_intervals(spans)
 
 
 def web_activity(config, start, end, rows=None, precision=3):

@@ -12,7 +12,7 @@
 | interfaces | CSV 解析、入库、修订、查询与来源快照 |
 | summaries | 五类汇总、浏览器网站、活动分布与总时长 |
 | periods | 日历周期、有效数据量、睡眠过程与区间统计 |
-| screen | 截图材料标识、去重、敏感脱敏、空闲/活跃分钟、日报 timeline 合并与边界截断 |
+| screen | 截图材料标识、去重、敏感脱敏、ActivityWatch 活跃区间融合、日报 timeline 与边界截断 |
 
 截图分析器可用合成图片和临时目录单独验证，不写入正式 raw/database：
 

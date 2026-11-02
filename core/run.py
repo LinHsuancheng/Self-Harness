@@ -257,8 +257,14 @@ def _context_blocks(context, zone):
     else:blocks['PC_HOURLY']='<p class="empty">无可用小时活动</p>'
     if not hours:blocks['PC_DETAIL']='无可用小时活动'
     if pc_source=='pc_screen_activity':
-        sample=ps.get('sample_minutes',5)
-        blocks['PC_NOTE']=f'按每 {sample:g} 分钟截图采样折算；空闲样本计入覆盖但不计入活跃分钟，敏感截图只保留分类。'
+        classified=ps.get('classified_minutes')
+        unclassified=ps.get('unclassified_minutes')
+        coverage=ps.get('activitywatch_coverage_minutes')
+        detail=(f'已分类 {classified:.0f} min · 未分类 {unclassified:.0f} min'
+                if classified is not None and unclassified is not None else '语义分类不可用')
+        coverage_text=f'ActivityWatch 覆盖 {coverage:.0f} min' if coverage is not None else 'ActivityWatch 覆盖不可用'
+        blocks['PC_NOTE']=('PC 时长来自 ActivityWatch 的非 AFK 前台窗口；截图仅提供行为语义。'
+                           f'{detail}；{coverage_text}。')
     else:
         blocks['PC_NOTE']='统计范围内的活跃窗口，按事件与小时的实际交集计算。'
     timeline = ps.get('timeline') or [] if pc_source=='pc_screen_activity' else []

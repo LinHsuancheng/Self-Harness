@@ -12,7 +12,7 @@
 | observed_from / observed_to | 实际观测范围 |
 | observed_hours / time_coverage | 区间来源的覆盖小时与覆盖比例 |
 
-体重均值采用测量数。iPhone 使用实际快照日期。PC 使用窗口与 AFK 共同覆盖的日期。Todo 使用快照及实际完成证据的日期，另给 completion_count；只有日期精度的完成按完成日期计入，不用 00:00 时刻换算。截图活动使用有截图样本的逻辑日，`record_count` 为样本数；日报只有在样本达到 `report_min_samples` 时才切换到该源。
+体重均值采用测量数。iPhone 使用实际快照日期。PC 使用窗口与 AFK 共同覆盖的日期。Todo 使用快照及实际完成证据的日期，另给 completion_count；只有日期精度的完成按完成日期计入，不用 00:00 时刻换算。截图活动的 `record_count` 为截图样本数，但活跃分钟与日均分母来自 ActivityWatch 覆盖；没有 ActivityWatch 覆盖时截图时长为 null。日报只有在样本达到 `report_min_samples` 且融合时长可用时才选择截图语义源。
 
 睡眠日均采用完整睡眠结束日期数，observed_days 另外表示分期覆盖的日期数。完整过程与区间时长分别由 attributed_sleep_hours 和 sleep_hours 表达。
 

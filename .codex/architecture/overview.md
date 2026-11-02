@@ -9,7 +9,7 @@
 - core 读取统一入口生成的周期材料，使用独立 prompt 分析并保存报告。
 - email 将报告投递给配置的收件人。
 
-五来源采集、保存与周期统计，以及 core 分析与 Gmail 邮件投递均已完成并在服务器运行。截图观察 `pc_screen_activity` 作为新的 PC 语义来源，与 ActivityWatch 并行采集；日报在样本足够时优先使用截图分析，否则回退旧源。
+五来源采集、保存与周期统计，以及 core 分析与 Gmail 邮件投递均已完成并在服务器运行。截图观察 `pc_screen_activity` 作为 PC 语义来源，与 ActivityWatch 并行采集；ActivityWatch 始终负责 AFK-aware 计时，截图在样本足够时增强行为、主题、视觉 focus 和 timeline，否则日报直接使用 ActivityWatch。
 
 本地来源在可访问来源的机器采集并上传，服务器来源由采集中心定时获取。上传、入库和报告分别调度。截图上传后由服务器销毁式分析器转换为 JSON，再进入同一 raw→parser→SQLite→report 链路。
 

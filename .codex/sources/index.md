@@ -9,4 +9,4 @@
 | pc_screen_activity | ShareX 截图经服务器视觉分析生成的 JSON | [PC 截图活动](pc-screen-activity.md) |
 | todo | Microsoft Graph JSON | [Todo](todo.md) |
 
-手机三类来源按已确认的外部定时流程上传，约定见[手机上传](mobile-upload.md)。`pc_screen_activity` 与 `pc_screen_time` 并行采集；日报优先截图源，样本不足时回退 ActivityWatch。
+手机三类来源按已确认的外部定时流程上传，约定见[手机上传](mobile-upload.md)。`pc_screen_activity` 与 `pc_screen_time` 并行采集；ActivityWatch 负责 PC 计时，截图负责活跃区间的语义增强。

@@ -54,7 +54,7 @@ flowchart LR
 
 已实现 core 单次报告生成与可选 Gmail 投递：读取 interface 周期材料，经 DeepSeek 分析后渲染并保存 HTML 报告；显式添加 `--send-email` 后通过 Gmail OAuth 发送。代码已推送至 GitHub 并部署到 `/root/test-server`；服务器配置、授权、原始数据、数据库和 Python 环境保留在运行目录，采集服务持续运行。
 
-截图观察 `pc_screen_activity` 已实现：Windows 任务每 5 分钟触发 ShareX，WSL 上传 JPEG；服务器分析器调用 DeepSeek 视觉模型生成严格 JSON，写入 raw 后删除截图，parser 入库。日报在样本足够时优先使用截图活动，否则回退 ActivityWatch；旧源并行保留。合成图片已跑通上传、分析、入库、汇总与日报渲染检查。
+截图观察 `pc_screen_activity` 已实现：Windows 任务每 5 分钟触发 ShareX，WSL 上传 JPEG；服务器分析器调用 DeepSeek 视觉模型生成严格 JSON，写入 raw 后删除截图，parser 入库。ActivityWatch 的非 AFK 前台窗口负责 PC 计时，截图只为这些活跃区间补充行为、主题和视觉 focus；截图不足时直接使用 ActivityWatch。合成图片已跑通上传、分析、融合、汇总与日报渲染检查。
 
 ## 开始使用与参与
 

@@ -102,7 +102,7 @@ def following(rows,end):
     return next((r for r in rows if time(r['observed_at'])>=time(end)),None)
 
 
-def calculate(config,source,rows,start,end,sessions=(),level='day'):
+def calculate(config,source,rows,start,end,sessions=(),level='day',pc_rows=None):
     from . import operator
     selected=clip(rows,start,end);zone=config.get('timezone',periods.DEFAULT_TIMEZONE)
     if source=='weight':result=summary.weight(selected,select_baseline(rows,start))
@@ -141,10 +141,43 @@ def calculate(config,source,rows,start,end,sessions=(),level='day'):
         sites=operator.web_activity(config,start,end,selected,precision=9)
         result={'total_minutes':round(sum(totals.values()),6),'apps':[{'app':name,'minutes':minutes} for name,minutes in totals.items()],'websites':sites}
     elif source=='pc_screen_activity':
+        pc_selected=clip(pc_rows or [],start,end)
+        pc_coverage=coverage('pc_screen_time',pc_selected,start,end) if pc_rows is not None else []
+        activity_available=bool(pc_coverage)
+        active_intervals=(operator.pc_active_intervals(config,start,end,pc_selected)
+                          if activity_available else [])
         result=summary.screen_activity(selected,start,end,zone,
                                        config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR),
                                        config['sources'][source],include_hourly=level=='day',
-                                       include_timeline=level=='day')
+                                       include_timeline=level=='day',active_intervals=active_intervals)
+        classified=result['total_minutes']
+        active_minutes=round(duration(active_intervals)/60,3) if activity_available else None
+        result.update({'activity_time_source':'activitywatch',
+                       'activity_time_available':activity_available,
+                       'activitywatch_coverage_minutes':round(duration(pc_coverage)/60,3),
+                       'classified_minutes':classified,
+                       'unclassified_minutes':round(max(0,active_minutes-classified),3)
+                                              if active_minutes is not None else None,
+                       'total_minutes':active_minutes})
+        if active_minutes is not None:
+            for key,name in (('categories','name'),('apps','app'),('topics','topic'),('focus','focus')):
+                for item in result.get(key,[]):
+                    item['share']=round(item['minutes']/active_minutes,4) if active_minutes else 0
+        if level=='day':
+            result['hourly']=[
+                {'start':a,'end':b,'minutes':round(duration(
+                    [span for x,y in active_intervals if (span:=intersect(x,y,time(a),time(b)))])/60,3)}
+                for a,b in periods.hourly(start,end,zone)] if activity_available else []
+            daily=[]
+            for day_start,day_end in periods.days(
+                    start,end,zone,config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR)):
+                minutes=round(duration([span for x,y in active_intervals
+                                       if (span:=intersect(x,y,time(day_start),time(day_end)))])/60,3)
+                if minutes:
+                    daily.append({'date':periods.logical_date(day_start,zone,
+                                  config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR)),
+                                  'minutes':minutes})
+            result['daily']=daily
     else:
         result=summary.todo(selected,select_baseline(rows,start),start,end,following(rows,end))
         initial=select_baseline(rows,start)
@@ -163,10 +196,23 @@ def calculate(config,source,rows,start,end,sessions=(),level='day'):
         q['day_coverage']=round(len(dates)/q['calendar_days'],4)
         result['attributed_sleep_hours']=round(sum(s['sleep_hours'] for s in owned),3)
     count=q['effective_days']
+    if source=='pc_screen_activity' and pc_rows is not None:
+        pcq=quality('pc_screen_time',clip(pc_rows,start,end),start,end,zone,
+                    day_start_hour=config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR))
+        for key in ('effective_days','effective_dates','average_denominator','day_coverage',
+                    'observed_from','observed_to'):
+            q[key]=pcq[key]
+        q['activitywatch_time_coverage']=pcq['time_coverage']
+        q['activitywatch_observed_hours']=pcq['observed_hours']
+        count=pcq['effective_days']
     if source=='sleep':result['daily_average_hours']=round(result['attributed_sleep_hours']/count,3) if count else None
-    elif source in ('iphone_screen_time','pc_screen_time','pc_screen_activity'):result['daily_average_minutes']=round(result['total_minutes']/count,3) if count else None
+    elif source in ('iphone_screen_time','pc_screen_time','pc_screen_activity'):
+        result['daily_average_minutes']=(round(result['total_minutes']/count,3)
+                                         if count and result['total_minutes'] is not None else None)
     elif source=='todo':result['daily_average_completed']=round(result['completed_count']/count,3) if count else None
-    has_data=bool(selected or owned) if source=='sleep' else bool(count)
+    has_data=(bool(selected or owned) if source=='sleep' else
+              (bool(selected) or result.get('activity_time_available') is True)
+              if source=='pc_screen_activity' else bool(count))
     if not has_data:
         result={k:[] if isinstance(v,list) else None for k,v in result.items()}
         if source=='weight':result['unit']=config['sources'][source].get('unit')
@@ -218,6 +264,11 @@ def display(config,source,result,level):
         result.pop('apps',None);result.pop('websites',None);result['activities']=[]
     elif source=='pc_screen_activity':
         result['activities']=[dict(item,kind='category') for item in result.get('categories',[])]
+        if result.get('unclassified_minutes'):
+            result['activities'].append({'kind':'other','name':'未分类活跃',
+                                         'minutes':result['unclassified_minutes'],
+                                         'share':round(result['unclassified_minutes']/result['total_minutes'],4)
+                                                 if result.get('total_minutes') else 0})
         if level!='day':
             major=result['activities'][:10];rest=result['activities'][10:]
             if rest:major.append({'kind':'other','name':'其他活动','minutes':round(sum(x['minutes'] for x in rest),3),'share':round(sum(x['share'] for x in rest),4)})
@@ -255,9 +306,11 @@ def report(config,source,start,end,level):
     if time(start)>=time(end):raise ValueError('Start must precede end')
     prior_start,prior_end=periods.previous(start,end,level,zone)
     rows=load(config,source,min(prior_start,start),max(prior_end,end))
+    pc_rows=(load(config,'pc_screen_time',min(prior_start,start),max(prior_end,end))
+             if source=='pc_screen_activity' and 'pc_screen_time' in config['sources'] else None)
     sessions=sleep_sessions(rows,config['sources'][source].get('summary',{}).get('session_gap_minutes',30)) if source=='sleep' else []
     def compute(a,b):
-        return calculate(config,source,rows,a,b,sessions,level=level)
+        return calculate(config,source,rows,a,b,sessions,level=level,pc_rows=pc_rows)
     current,q=compute(start,end)
     prior,pq=compute(prior_start,prior_end)
     trend=[]
