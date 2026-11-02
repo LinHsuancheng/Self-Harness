@@ -82,7 +82,11 @@ with tempfile.TemporaryDirectory() as directory:
     assert report['summary']['daily_average_minutes'] == 15
     assert report['summary']['activities'][0]['name'] == '工作/开发'
     assert report['summary']['sample_minutes'] == 5
+    assert len(report['summary']['timeline']) == 2
     assert report['comparison']['metrics']['daily_average_minutes']['current'] == 15
+    weekly = summarize(config, 'pc_screen_activity', '2026-10-13T09:00:00+08:00',
+                       '2026-10-14T09:00:00+08:00', level='week')
+    assert 'timeline' not in weekly['summary']
 
     rows = [
         {'source': 'pc_screen_activity', 'observed_at': '2026-10-13T10:00:00+08:00',
@@ -105,8 +109,48 @@ with tempfile.TemporaryDirectory() as directory:
     assert result['daily'] == [{'date': '2026-10-13', 'minutes': 10}]
     assert len(result['hourly']) == 1 and result['hourly'][0]['minutes'] == 10
 
-    tail = screen_activity(rows, '2026-10-13T10:00:00+08:00', '2026-10-13T10:12:00+08:00',
-                           'Asia/Singapore', 9, SETTINGS)
-    assert tail['total_minutes'] == 7, 'the last sample must be capped at the period end'
+    timeline_rows = [
+        {'source': 'pc_screen_activity', 'observed_at': '2026-10-13T10:00:00+08:00',
+         'data': {'analysis': analysis(topics=['self-harness'], summary='编辑截图分析器。',
+                                       confidence=.9)}},
+        {'source': 'pc_screen_activity', 'observed_at': '2026-10-13T10:05:00+08:00',
+         'data': {'analysis': analysis(app='Terminal', topics=['checks'], summary='运行合成检查。',
+                                       focus='light', confidence=.7)}},
+        {'source': 'pc_screen_activity', 'observed_at': '2026-10-13T10:10:00+08:00',
+         'data': {'analysis': analysis(app='LockScreen', category='other', activity='idle',
+                                       focus='idle', topics=[], summary='空闲。')}},
+        {'source': 'pc_screen_activity', 'observed_at': '2026-10-13T10:15:00+08:00',
+         'data': {'analysis': analysis(app='LockScreen', category='other', activity='idle',
+                                       focus='idle', topics=[], summary='空闲。')}},
+        {'source': 'pc_screen_activity', 'observed_at': '2026-10-13T10:20:00+08:00',
+         'data': {'analysis': analysis(app='Bank', topics=['account'], summary='余额 1234',
+                                       sensitive=True)}},
+        {'source': 'pc_screen_activity', 'observed_at': '2026-10-13T10:25:00+08:00',
+         'data': {'analysis': analysis(app='Reader', category='study', activity='reading',
+                                       topics=['paper'], summary='阅读论文。', focus='light')}},
+        {'source': 'pc_screen_activity', 'observed_at': '2026-10-13T10:45:00+08:00',
+         'data': {'analysis': analysis(app='Reader', category='study', activity='reading',
+                                       topics=['paper'], summary='继续阅读论文。', focus='light')}},
+    ]
+    timeline = screen_activity(
+        timeline_rows, '2026-10-13T10:00:00+08:00', '2026-10-13T10:50:00+08:00',
+        'Asia/Singapore', 9, SETTINGS, include_timeline=True)['timeline']
+    assert len(timeline) == 5
+    assert timeline[0] == {
+        'start': '2026-10-13T10:00:00+08:00', 'end': '2026-10-13T10:10:00+08:00',
+        'minutes': 10, 'category': '工作/开发', 'activity': 'coding', 'focus': '深度',
+        'apps': ['Visual Studio Code', 'Terminal'], 'topics': ['self-harness', 'checks'],
+        'summary': '运行合成检查。', 'sample_count': 2, 'average_confidence': .8}
+    assert timeline[1]['activity'] == 'idle' and timeline[1]['minutes'] == 10
+    assert timeline[2]['apps'] == [] and timeline[2]['topics'] == []
+    assert timeline[2]['summary'] == screen.SENSITIVE_SUMMARY
+    assert timeline[3]['start'] == '2026-10-13T10:25:00+08:00'
+    assert timeline[3]['end'] == '2026-10-13T10:30:00+08:00'
+    assert timeline[4]['start'] == '2026-10-13T10:45:00+08:00'
 
-print('PASS: screenshot identity, duplicate capture, sensitive redaction, aggregation and boundary cap')
+    tail = screen_activity(rows, '2026-10-13T10:00:00+08:00', '2026-10-13T10:12:00+08:00',
+                           'Asia/Singapore', 9, SETTINGS, include_timeline=True)
+    assert tail['total_minutes'] == 7, 'the last sample must be capped at the period end'
+    assert tail['timeline'][-1]['end'] == '2026-10-13T10:12:00+08:00'
+
+print('PASS: screenshot identity, duplicate capture, sensitive redaction, aggregation, timeline and boundary cap')

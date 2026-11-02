@@ -143,7 +143,8 @@ def calculate(config,source,rows,start,end,sessions=(),level='day'):
     elif source=='pc_screen_activity':
         result=summary.screen_activity(selected,start,end,zone,
                                        config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR),
-                                       config['sources'][source],include_hourly=level=='day')
+                                       config['sources'][source],include_hourly=level=='day',
+                                       include_timeline=level=='day')
     else:
         result=summary.todo(selected,select_baseline(rows,start),start,end,following(rows,end))
         initial=select_baseline(rows,start)
@@ -222,7 +223,7 @@ def display(config,source,result,level):
             if rest:major.append({'kind':'other','name':'其他活动','minutes':round(sum(x['minutes'] for x in rest),3),'share':round(sum(x['share'] for x in rest),4)})
             result['activities']=major
     if level!='day':
-        for key in ('sessions','daily','hourly'):result.pop(key,None)
+        for key in ('sessions','daily','hourly','timeline'):result.pop(key,None)
     return result
 
 

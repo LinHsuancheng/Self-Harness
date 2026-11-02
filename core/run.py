@@ -97,6 +97,33 @@ def _recommendation_items(recommendations):
     )
 
 
+def _timeline_items(items, zone):
+    if not items:
+        return '<p class="empty">当前来源没有可用的行为时间线。</p>'
+
+    def clock(value):
+        try:
+            return datetime.fromisoformat(value).astimezone(ZoneInfo(zone)).strftime('%H:%M')
+        except (TypeError, ValueError):
+            return '—'
+
+    rows = []
+    for item in items:
+        labels = [str(value) for value in (item.get('apps') or [])+(item.get('topics') or [])]
+        meta = [item.get('category'), item.get('activity'), item.get('focus')]
+        rows.append(
+            '<article class="timeline-item">'
+            f'<time>{clock(item.get("start"))}–{clock(item.get("end"))}</time>'
+            '<div class="timeline-body">'
+            f'<p class="timeline-summary">{escape(str(item.get("summary") or "未识别活动"))}'
+            f'<span>{item.get("minutes", 0):g} min</span></p>'
+            f'<p class="timeline-meta">{escape(" · ".join(str(value) for value in meta if value))}</p>'
+            f'<p class="timeline-labels">{escape(" · ".join(labels))}</p>'
+            '</div></article>'
+        )
+    return '<div class="timeline">'+''.join(rows)+'</div>'
+
+
 def _select_pc_context(context, config):
     """Keep exactly one PC source: screenshot activity when it has enough samples."""
     candidate = context.get('pc_screen_activity')
@@ -234,6 +261,11 @@ def _context_blocks(context, zone):
         blocks['PC_NOTE']=f'按每 {sample:g} 分钟截图采样折算；空闲样本计入覆盖但不计入活跃分钟，敏感截图只保留分类。'
     else:
         blocks['PC_NOTE']='统计范围内的活跃窗口，按事件与小时的实际交集计算。'
+    timeline = ps.get('timeline') or [] if pc_source=='pc_screen_activity' else []
+    blocks['PC_TIMELINE_SECTION'] = (
+        '<h3>Computer-use Timeline</h3>'+_timeline_items(timeline, zone)
+        if pc.get('level') == 'day' else ''
+    )
 
     # ── IPHONE ─────────────────────────────────────────────────────────────
     ip  = context.get('iphone_screen_time', {})

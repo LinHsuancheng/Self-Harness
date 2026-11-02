@@ -152,9 +152,10 @@ def todo(rows, baseline, start, end, following=None):
             'appeared_count':len(appeared),'disappeared_count':len(disappeared),'changed_count':len(changed)}
 
 
-def screen_activity(rows, start, end, report_timezone, day_start_hour=9, settings=None, include_hourly=False):
+def screen_activity(rows, start, end, report_timezone, day_start_hour=9, settings=None,
+                    include_hourly=False, include_timeline=False):
     """Aggregate 5-minute screenshot samples; idle samples are coverage, not active time."""
-    from . import periods
+    from . import periods, screen
     settings = settings or {}
     sample = float(settings.get('sample_minutes', 5))
     names = settings.get('category_names', {})
@@ -171,6 +172,24 @@ def screen_activity(rows, start, end, report_timezone, day_start_hour=9, setting
         for a, b in periods.hourly(start, end, report_timezone):
             hours.append({'start': a, 'end': b, 'minutes': 0.0})
     hourly = {item['start']: item for item in hours}
+    timeline = []
+    session = None
+
+    def finish_session():
+        nonlocal session
+        if session is None:
+            return
+        focus_name = max(session['_focus'], key=session['_focus'].get)
+        timeline.append({
+            'start': session['start'], 'end': session['end'],
+            'minutes': round(session['_seconds']/60, 3),
+            'category': session['category'], 'activity': session['activity'],
+            'focus': focus_name, 'apps': session['apps'], 'topics': session['topics'],
+            'summary': session['summary'], 'sample_count': session['sample_count'],
+            'average_confidence': round(session['_confidence']/session['sample_count'], 4),
+        })
+        session = None
+
     total = observed = idle = 0.0
     captures = active_captures = sensitive_captures = 0
     for index, row in enumerate(ordered):
@@ -189,6 +208,43 @@ def screen_activity(rows, start, end, report_timezone, day_start_hour=9, setting
         captures += 1
         observed += seconds
         is_idle = analysis.get('focus') == 'idle' or analysis.get('activity') == 'idle'
+        is_sensitive = bool(analysis.get('sensitive'))
+        if include_timeline:
+            session_key = (('sensitive',) if is_sensitive else ('idle',) if is_idle else
+                           ('active', analysis.get('category'), analysis.get('activity')))
+            contiguous = (session is not None and session['_key'] == session_key and
+                          (current-session['_last_observed']).total_seconds() <= sample*60)
+            if not contiguous:
+                finish_session()
+                session = {
+                    '_key': session_key, '_last_observed': current, '_seconds': 0.0,
+                    '_confidence': 0.0, '_focus': defaultdict(float),
+                    'start': current.isoformat(), 'end': current.isoformat(),
+                    'category': names.get(analysis.get('category'), analysis.get('category') or 'other'),
+                    'activity': analysis.get('activity') or 'other', 'apps': [], 'topics': [],
+                    'summary': '', 'sample_count': 0,
+                }
+            session['_last_observed'] = current
+            session['_seconds'] += seconds
+            session['end'] = (current+timedelta(seconds=seconds)).isoformat()
+            session['sample_count'] += 1
+            confidence = analysis.get('confidence', 0)
+            session['_confidence'] += confidence if isinstance(confidence, (int, float)) else 0
+            focus_name = focus_names.get(analysis.get('focus'), analysis.get('focus') or 'other')
+            session['_focus'][focus_name] += seconds
+            if is_sensitive:
+                session['apps'] = []
+                session['topics'] = []
+                session['summary'] = screen.SENSITIVE_SUMMARY
+            else:
+                app = analysis.get('app') or 'unknown'
+                if app not in session['apps']:
+                    session['apps'].append(app)
+                for topic in analysis.get('topics', []):
+                    if isinstance(topic, str) and topic and topic not in session['topics']:
+                        session['topics'].append(topic)
+                if analysis.get('summary'):
+                    session['summary'] = analysis['summary']
         if is_idle:
             idle += seconds
         else:
@@ -212,6 +268,8 @@ def screen_activity(rows, start, end, report_timezone, day_start_hour=9, setting
             if key in hourly:
                 hourly[key]['minutes'] += 0 if is_idle else seconds/60
 
+    finish_session()
+
     def distribution(counter, key):
         amount = sum(counter.values())
         return [{key: name, 'minutes': round(value, 3),
@@ -230,6 +288,7 @@ def screen_activity(rows, start, end, report_timezone, day_start_hour=9, setting
             'topics': distribution(topics, 'topic'),
             'focus': distribution(focus, 'focus'),
             'daily': [{'date': day, 'minutes': round(minutes, 3)} for day, minutes in sorted(daily.items())],
+            'timeline': timeline,
             'hourly': [{'start': item['start'], 'end': item['end'], 'minutes': round(item['minutes'], 3)}
                        for item in hours]}
 
