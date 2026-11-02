@@ -191,17 +191,20 @@ def screen_activity(rows, start, end, report_timezone, day_start_hour=9, setting
         })
         session = None
 
-    def add_timeline_span(analysis, begin, end, is_idle, is_sensitive):
+    def add_timeline_span(analysis, begin, end, is_idle, is_sensitive, sample_id):
         nonlocal session
         session_key = (('sensitive',) if is_sensitive else ('idle',) if is_idle else
                        ('active', analysis.get('category'), analysis.get('activity')))
+        # ActivityWatch emits adjacent foreground events with small collection gaps.
+        # Coalesce those in the display timeline, while `_seconds` still sums only
+        # the observed spans so the gap never becomes active time.
         contiguous = (session is not None and session['_key'] == session_key and
-                      begin <= session['_active_end'])
+                      begin <= session['_active_end'] + timedelta(seconds=5))
         if not contiguous:
             finish_session()
             session = {
                 '_key': session_key, '_active_end': begin, '_seconds': 0.0,
-                '_confidence': 0.0, '_focus': defaultdict(float),
+                '_confidence': 0.0, '_focus': defaultdict(float), '_last_sample_id': None,
                 'start': begin.astimezone(report_zone).isoformat(),
                 'end': begin.astimezone(report_zone).isoformat(),
                 'category': names.get(analysis.get('category'), analysis.get('category') or 'other'),
@@ -212,9 +215,11 @@ def screen_activity(rows, start, end, report_timezone, day_start_hour=9, setting
         session['_active_end'] = end
         session['_seconds'] += span_seconds
         session['end'] = end.astimezone(report_zone).isoformat()
-        session['sample_count'] += 1
-        confidence = analysis.get('confidence', 0)
-        session['_confidence'] += confidence if isinstance(confidence, (int, float)) else 0
+        if session['_last_sample_id'] != sample_id:
+            session['sample_count'] += 1
+            confidence = analysis.get('confidence', 0)
+            session['_confidence'] += confidence if isinstance(confidence, (int, float)) else 0
+            session['_last_sample_id'] = sample_id
         focus_name = focus_names.get(analysis.get('focus'), analysis.get('focus') or 'other')
         session['_focus'][focus_name] += span_seconds
         if is_sensitive:
@@ -259,7 +264,7 @@ def screen_activity(rows, start, end, report_timezone, day_start_hour=9, setting
         is_sensitive = bool(analysis.get('sensitive'))
         if include_timeline:
             for begin, finish in spans:
-                add_timeline_span(analysis, begin, finish, is_idle, is_sensitive)
+                add_timeline_span(analysis, begin, finish, is_idle, is_sensitive, index)
         if is_idle:
             idle += seconds
         else:

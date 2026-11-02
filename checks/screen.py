@@ -156,6 +156,18 @@ with tempfile.TemporaryDirectory() as directory:
     assert [(item['start'], item['end'], item['minutes']) for item in split['timeline']] == [
         ('2026-10-13T10:00:00+08:00', '2026-10-13T10:01:00+08:00', 1),
         ('2026-10-13T10:04:00+08:00', '2026-10-13T10:05:00+08:00', 1)]
+    micro_gap = screen_activity(
+        active_rows[:1], '2026-10-13T10:00:00+08:00', '2026-10-13T10:05:00+08:00',
+        'Asia/Singapore', 9, SETTINGS, include_timeline=True,
+        active_intervals=[
+            (datetime.fromisoformat('2026-10-13T10:00:00+08:00'),
+             datetime.fromisoformat('2026-10-13T10:01:00+08:00')),
+            (datetime.fromisoformat('2026-10-13T10:01:03+08:00'),
+             datetime.fromisoformat('2026-10-13T10:02:00+08:00'))])
+    assert len(micro_gap['timeline']) == 1
+    assert micro_gap['timeline'][0]['minutes'] == 1.95
+    assert micro_gap['timeline'][0]['sample_count'] == 1
+    assert micro_gap['timeline'][0]['average_confidence'] == .9
 
     timeline_rows = [
         {'source': 'pc_screen_activity', 'observed_at': '2026-10-13T10:00:00+08:00',
