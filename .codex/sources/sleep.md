@@ -15,6 +15,6 @@ operator 将实际连续分期组合为睡眠过程，支持任意时段入睡�
 | stages | 分期时长与占比 |
 | sleep_start_distribution / wake_distribution | 入睡与起床的六小时时段分布 |
 
-日报还给出完整 sessions。过程按入睡开始时间所属逻辑日归属；跨越日报 09:00 边界的过程不移到醒来所在的下一日报。截止时仍未结束的过程只列已记录片段，并标为不完整。
+日报还给出完整 sessions。过程按入睡开始时间所属逻辑日归属；生成报告时已结束的睡眠即使跨过 09:00 边界，也完整计入入睡日，不移到醒来所在的下一日报。生成时仍未结束的过程只列范围内已记录片段，并标为不完整。
 
 相关资源：[周期](../implementation/periods.md)、[有效数据量](../implementation/effective-data.md)。

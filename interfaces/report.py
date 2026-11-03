@@ -102,13 +102,14 @@ def following(rows,end):
     return next((r for r in rows if time(r['observed_at'])>=time(end)),None)
 
 
-def calculate(config,source,rows,start,end,sessions=(),level='day',pc_rows=None):
+def calculate(config,source,rows,start,end,sessions=(),level='day',pc_rows=None,as_of=None):
     from . import operator
+    as_of=as_of or datetime.now(timezone.utc)
     selected=clip(rows,start,end);zone=config.get('timezone',periods.DEFAULT_TIMEZONE)
     if source=='weight':result=summary.weight(selected,select_baseline(rows,start))
     elif source=='sleep':
         lower,upper=time(start),time(end)
-        owned=[s for s in sessions if lower<=time(s['start'])<upper and time(s['end'])<=upper]
+        owned=[s for s in sessions if lower<=time(s['start'])<upper and time(s['end'])<=as_of]
         owned_rows=[{'data':stage} for session in owned for stage in session['_stages']]
         if owned_rows:
             full_start=min(stage['data']['start'] for stage in owned_rows)
@@ -120,12 +121,15 @@ def calculate(config,source,rows,start,end,sessions=(),level='day',pc_rows=None)
                           if '清醒' not in stage['stage'] and stage['stage'] not in ('awake','卧床','inBed')]
         ongoing=[]
         for session in sessions:
-            if lower<=time(session['start'])<upper<time(session['end']):
+            if lower<=time(session['start'])<upper and time(session['start'])<=as_of<time(session['end']):
+                cutoff=min(upper,as_of)
+                if time(session['start'])>=cutoff:continue
                 spans=[]
                 for stage in session['_stages']:
                     if '清醒' in stage['stage'] or stage['stage'] in ('awake','卧床','inBed'):continue
-                    if span:=intersect(time(stage['start']),time(stage['end']),time(start),time(end)):spans.append(span)
-                ongoing.append({'start':session['start'],'end':end,'sleep_hours':round(duration(spans)/3600,6),'complete':False})
+                    if span:=intersect(time(stage['start']),time(stage['end']),lower,cutoff):spans.append(span)
+                ongoing.append({'start':session['start'],'end':periods.local(cutoff,zone).isoformat(),
+                                'sleep_hours':round(duration(spans)/3600,6),'complete':False})
         result['session_count']=len(owned)
         result['average_session_hours']=round(sum(s['sleep_hours'] for s in owned)/len(owned),3) if owned else None
         result['sessions']=[{k:v for k,v in s.items() if k!='_stages'}|{'complete':True} for s in owned]
@@ -300,9 +304,14 @@ def comparison(source,current,prior,quality_current,quality_prior,start,end):
     return {'period':{'start':start,'end':end},'data_quality':quality_prior,'metrics':metrics,'distribution_changes':changes[:10]}
 
 
-def report(config,source,start,end,level):
+def report(config,source,start,end,level,as_of=None):
     zone=config.get('timezone',periods.DEFAULT_TIMEZONE)
     day_start_hour=config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR)
+    if as_of is None:as_of=datetime.now(timezone.utc)
+    elif isinstance(as_of,str):as_of=time(as_of)
+    else:
+        if as_of.tzinfo is None:as_of=as_of.replace(tzinfo=ZoneInfo(zone))
+        as_of=as_of.astimezone(timezone.utc)
     start,end=periods.local(start,zone).isoformat(),periods.local(end,zone).isoformat()
     if time(start)>=time(end):raise ValueError('Start must precede end')
     prior_start,prior_end=periods.previous(start,end,level,zone)
@@ -311,7 +320,7 @@ def report(config,source,start,end,level):
              if source=='pc_screen_activity' and 'pc_screen_time' in config['sources'] else None)
     sessions=sleep_sessions(rows,config['sources'][source].get('summary',{}).get('session_gap_minutes',30)) if source=='sleep' else []
     def compute(a,b):
-        return calculate(config,source,rows,a,b,sessions,level=level,pc_rows=pc_rows)
+        return calculate(config,source,rows,a,b,sessions,level=level,pc_rows=pc_rows,as_of=as_of)
     current,q=compute(start,end)
     prior,pq=compute(prior_start,prior_end)
     trend=[]

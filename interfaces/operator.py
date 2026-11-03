@@ -96,9 +96,9 @@ def status(config, source):
         return result
 
 
-def summarize(config, source, start, end, level='day'):
+def summarize(config, source, start, end, level='day', as_of=None):
     from .report import report
-    return report(config,source,start,end,level)
+    return report(config,source,start,end,level,as_of=as_of)
 
 
 def context(config, start, end, level='day'):
