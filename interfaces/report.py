@@ -107,7 +107,8 @@ def calculate(config,source,rows,start,end,sessions=(),level='day',pc_rows=None)
     selected=clip(rows,start,end);zone=config.get('timezone',periods.DEFAULT_TIMEZONE)
     if source=='weight':result=summary.weight(selected,select_baseline(rows,start))
     elif source=='sleep':
-        owned=[s for s in sessions if time(start)<=time(s['end'])<time(end)]
+        lower,upper=time(start),time(end)
+        owned=[s for s in sessions if lower<=time(s['start'])<upper and time(s['end'])<=upper]
         owned_rows=[{'data':stage} for session in owned for stage in session['_stages']]
         if owned_rows:
             full_start=min(stage['data']['start'] for stage in owned_rows)
@@ -119,7 +120,7 @@ def calculate(config,source,rows,start,end,sessions=(),level='day',pc_rows=None)
                           if '清醒' not in stage['stage'] and stage['stage'] not in ('awake','卧床','inBed')]
         ongoing=[]
         for session in sessions:
-            if time(session['start'])<time(end)<time(session['end']):
+            if lower<=time(session['start'])<upper<time(session['end']):
                 spans=[]
                 for stage in session['_stages']:
                     if '清醒' in stage['stage'] or stage['stage'] in ('awake','卧床','inBed'):continue
@@ -190,7 +191,7 @@ def calculate(config,source,rows,start,end,sessions=(),level='day',pc_rows=None)
     q=quality(source,selected,start,end,zone,result.get('completed_tasks',()),config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR))
     if source=='todo':q['completion_count']=len(result['completed_tasks'])
     if source=='sleep':
-        dates=sorted({periods.logical_date(s['end'],zone,config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR)) for s in owned})
+        dates=sorted({periods.logical_date(s['start'],zone,config.get('day_start_hour',periods.DEFAULT_DAY_START_HOUR)) for s in owned})
         q['observed_days']=q['effective_days']
         q['effective_days']=len(dates);q['effective_dates']=dates;q['average_denominator']=len(dates)
         q['day_coverage']=round(len(dates)/q['calendar_days'],4)
@@ -210,7 +211,7 @@ def calculate(config,source,rows,start,end,sessions=(),level='day',pc_rows=None)
         result['daily_average_minutes']=(round(result['total_minutes']/count,3)
                                          if count and result['total_minutes'] is not None else None)
     elif source=='todo':result['daily_average_completed']=round(result['completed_count']/count,3) if count else None
-    has_data=(bool(selected or owned) if source=='sleep' else
+    has_data=(bool(owned or ongoing) if source=='sleep' else
               (bool(selected) or result.get('activity_time_available') is True)
               if source=='pc_screen_activity' else bool(count))
     if not has_data:

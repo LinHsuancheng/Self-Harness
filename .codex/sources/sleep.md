@@ -8,13 +8,13 @@ operator 将实际连续分期组合为睡眠过程，支持任意时段入睡�
 
 | 指标 | 含义 |
 | --- | --- |
-| sleep_hours | 与报告范围相交的睡眠时长 |
-| attributed_sleep_hours | 在报告范围内结束的完整睡眠时长 |
-| daily_average_hours | 完整睡眠时长 / 有完整睡眠结束的日期数 |
+| sleep_hours | 报告范围内完整睡眠过程的总时长；未完成片段另列 |
+| attributed_sleep_hours | 按入睡开始所属逻辑日归属的完整睡眠时长 |
+| daily_average_hours | 完整睡眠时长 / 有完整睡眠开始的逻辑日期数 |
 | session_count / average_session_hours | 完整睡眠次数与每次平均长度 |
 | stages | 分期时长与占比 |
 | sleep_start_distribution / wake_distribution | 入睡与起床的六小时时段分布 |
 
-日报还给出完整 sessions。period 起止控制统计范围，睡眠过程按实际区间连接。
+日报还给出完整 sessions。过程按入睡开始时间所属逻辑日归属；跨越日报 09:00 边界的过程不移到醒来所在的下一日报。截止时仍未结束的过程只列已记录片段，并标为不完整。
 
 相关资源：[周期](../implementation/periods.md)、[有效数据量](../implementation/effective-data.md)。

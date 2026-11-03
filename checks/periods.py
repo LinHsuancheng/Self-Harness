@@ -44,11 +44,12 @@ with tempfile.TemporaryDirectory() as directory:
     assert sleep['summary']['average_session_hours']==4.5
     left=summarize(config,'sleep','2026-10-03T00:00:00+08:00','2026-10-04T00:00:00+08:00')
     right=summarize(config,'sleep','2026-10-04T00:00:00+08:00','2026-10-05T00:00:00+08:00')
-    assert left['summary']['sleep_hours']+right['summary']['sleep_hours']==3
-    assert right['summary']['sessions'][0]['sleep_hours']==3
+    assert left['summary']['ongoing_sessions'][0]['sleep_hours']==1
+    assert right['summary']['sleep_hours'] is None
+    assert not right['summary']['sessions']
     put('sleep','midnight.gz','核心睡眠,2026-10-05T18:00:00+08:00,2026-10-06T00:00:00+08:00\n')
     ingest(config,'sleep')
-    midnight=summarize(config,'sleep','2026-10-06T00:00:00+08:00','2026-10-07T00:00:00+08:00')
+    midnight=summarize(config,'sleep','2026-10-05T00:00:00+08:00','2026-10-06T00:00:00+08:00')
     assert midnight['summary']['session_count']==1
     assert midnight['summary']['daily_average_hours']==6
     put('sleep','morning.gz','核心睡眠,2026-10-12T23:00:00+08:00,2026-10-13T03:00:00+08:00\n清醒时间,2026-10-13T03:00:00+08:00,2026-10-13T03:30:00+08:00\n深度睡眠,2026-10-13T03:30:00+08:00,2026-10-13T07:30:00+08:00\n')
@@ -57,10 +58,24 @@ with tempfile.TemporaryDirectory() as directory:
     assert morning['summary']['sleep_hours']==8
     assert sum(s['hours'] for s in morning['summary']['stages'])==8
     assert morning['data_quality']['effective_dates']==['2026-10-12']
-    put('sleep','ongoing.gz','核心睡眠,2026-10-14T08:00:00+08:00,2026-10-14T10:00:00+08:00\n')
+    put('sleep','cross-boundary.gz','核心睡眠,2026-10-13T08:01:00+08:00,2026-10-13T09:20:00+08:00\n')
+    put('sleep','yesterday-night.gz','核心睡眠,2026-10-14T01:34:00+08:00,2026-10-14T08:51:00+08:00\n')
+    ingest(config,'sleep')
+    previous_day=summarize(dict(config,day_start_hour=9),'sleep',
+                           '2026-10-12T09:00:00+08:00','2026-10-13T09:00:00+08:00')
+    current_day=summarize(dict(config,day_start_hour=9),'sleep',
+                          '2026-10-13T09:00:00+08:00','2026-10-14T09:00:00+08:00')
+    assert any(s['start']=='2026-10-13T00:01:00+00:00'
+               for s in previous_day['summary']['ongoing_sessions'])
+    assert [s['start'] for s in current_day['summary']['sessions']]==['2026-10-13T17:34:00+00:00']
+    assert not current_day['summary']['ongoing_sessions']
+    assert previous_day['data_quality']['effective_dates']==['2026-10-12']
+    assert current_day['data_quality']['effective_dates']==['2026-10-13']
+    assert current_day['summary']['sleep_hours']==7.283
+    put('sleep','ongoing.gz','核心睡眠,2026-10-15T08:00:00+08:00,2026-10-15T10:00:00+08:00\n')
     put('weight','boundary.gz','2026-10-13T09:00:00+08:00,70\n2026-10-14T09:00:00+08:00,90\n')
     ingest(config,'sleep');ingest(config,'weight')
-    cutoff=summarize(dict(config,day_start_hour=9),'sleep','2026-10-13T09:00:00+08:00','2026-10-14T09:00:00+08:00')
+    cutoff=summarize(dict(config,day_start_hour=9),'sleep','2026-10-14T09:00:00+08:00','2026-10-15T09:00:00+08:00')
     assert cutoff['summary']['ongoing_sessions'][0]['sleep_hours']==1
     assert cutoff['summary']['ongoing_sessions'][0]['complete'] is False
     boundary=summarize(dict(config,day_start_hour=9),'weight','2026-10-13T09:00:00+08:00','2026-10-14T09:00:00+08:00')
